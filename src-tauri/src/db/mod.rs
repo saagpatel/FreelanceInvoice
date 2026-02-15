@@ -9,8 +9,6 @@ use rusqlite::Connection;
 
 use crate::error::AppResult;
 
-const MIGRATIONS: &[&str] = &[MIGRATION_V1];
-
 const MIGRATION_V1: &str = r#"
 CREATE TABLE IF NOT EXISTS clients (
     id TEXT PRIMARY KEY NOT NULL,
@@ -126,6 +124,7 @@ pub fn init_db(db_path: &str) -> AppResult<Connection> {
     Ok(conn)
 }
 
+#[cfg(test)]
 pub fn init_db_in_memory() -> AppResult<Connection> {
     let conn = Connection::open_in_memory()?;
     conn.execute_batch("PRAGMA foreign_keys=ON;")?;
@@ -134,29 +133,9 @@ pub fn init_db_in_memory() -> AppResult<Connection> {
 }
 
 fn run_migrations(conn: &Connection) -> AppResult<()> {
-    conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL DEFAULT 0);",
-    )?;
-
-    let current_version: i32 = conn
-        .query_row(
-            "SELECT COALESCE(MAX(version), 0) FROM schema_version",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap_or(0);
-
-    for (i, migration) in MIGRATIONS.iter().enumerate() {
-        let version = (i + 1) as i32;
-        if version > current_version {
-            conn.execute_batch(migration)?;
-            conn.execute(
-                "INSERT INTO schema_version (version) VALUES (?1)",
-                [version],
-            )?;
-        }
-    }
-
+    // Current schema is a single idempotent migration; applying it directly
+    // avoids version bookkeeping table maintenance.
+    conn.execute_batch(MIGRATION_V1)?;
     Ok(())
 }
 
@@ -192,13 +171,6 @@ mod tests {
         let conn = init_db_in_memory().expect("Failed to init DB");
         // Running migrations again should not fail
         run_migrations(&conn).expect("Second migration run should succeed");
-
-        let version: i32 = conn
-            .query_row("SELECT MAX(version) FROM schema_version", [], |row| {
-                row.get(0)
-            })
-            .unwrap();
-        assert_eq!(version, 1);
     }
 
     #[test]

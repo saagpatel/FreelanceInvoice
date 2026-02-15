@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+vi.mock("zustand/middleware", async () => {
+  const actual = await vi.importActual<typeof import("zustand/middleware")>(
+    "zustand/middleware"
+  );
+  return {
+    ...actual,
+    persist: (((initializer: unknown) => initializer) as unknown) as typeof actual.persist,
+  };
+});
+
 // Mock commands before importing the store
 vi.mock("../lib/commands", () => ({
   getTimerState: vi.fn(),

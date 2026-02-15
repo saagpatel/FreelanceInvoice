@@ -75,14 +75,6 @@ export interface TimeEntry {
   created_at: string;
 }
 
-export interface CreateManualTimeEntry {
-  project_id: string;
-  description?: string | null;
-  start_time: string;
-  end_time: string;
-  is_billable: boolean;
-}
-
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
 
 export interface Invoice {
@@ -177,11 +169,4 @@ export interface HoursByProject {
 export interface MonthlyRevenue {
   month: string;
   revenue: number;
-}
-
-export interface EstimateAccuracy {
-  project_name: string;
-  estimated_hours: number;
-  actual_hours: number;
-  accuracy_pct: number;
 }

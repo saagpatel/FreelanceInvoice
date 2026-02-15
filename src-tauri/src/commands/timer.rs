@@ -2,7 +2,7 @@ use tauri::State;
 
 use crate::db::time_entries;
 use crate::error::AppResult;
-use crate::models::{ActiveTimer, CreateManualTimeEntry, TimeEntry, TimerState};
+use crate::models::{ActiveTimer, TimeEntry, TimerState};
 use crate::DbState;
 
 #[tauri::command]
@@ -47,17 +47,6 @@ pub fn get_timer_state(state: State<DbState>) -> AppResult<TimerState> {
         rusqlite::Error::InvalidParameterName(e.to_string()),
     ))?;
     time_entries::get_timer_state(&conn)
-}
-
-#[tauri::command]
-pub fn create_manual_entry(
-    state: State<DbState>,
-    input: CreateManualTimeEntry,
-) -> AppResult<TimeEntry> {
-    let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
-        rusqlite::Error::InvalidParameterName(e.to_string()),
-    ))?;
-    time_entries::create_manual_time_entry(&conn, input)
 }
 
 #[tauri::command]

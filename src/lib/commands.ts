@@ -7,7 +7,6 @@ import type {
   CreateProject,
   UpdateProject,
   TimeEntry,
-  CreateManualTimeEntry,
   TimerState,
   ActiveTimer,
   Invoice,
@@ -18,7 +17,6 @@ import type {
   RevenueByClient,
   HoursByProject,
   MonthlyRevenue,
-  EstimateAccuracy,
 } from "../types";
 
 // Clients
@@ -36,8 +34,6 @@ export const deleteClient = (id: string) =>
 // Projects
 export const createProject = (input: CreateProject) =>
   invoke<Project>("create_project", { input });
-export const getProject = (id: string) =>
-  invoke<Project>("get_project", { id });
 export const listProjects = (status?: string) =>
   invoke<Project[]>("list_projects", { status: status ?? null });
 export const listProjectsByClient = (clientId: string) =>
@@ -61,8 +57,6 @@ export const resumeTimer = () =>
   invoke<ActiveTimer>("resume_timer");
 export const getTimerState = () =>
   invoke<TimerState>("get_timer_state");
-export const createManualEntry = (input: CreateManualTimeEntry) =>
-  invoke<TimeEntry>("create_manual_entry", { input });
 export const listTimeEntries = (projectId: string) =>
   invoke<TimeEntry[]>("list_time_entries", { projectId });
 export const deleteTimeEntry = (id: string) =>
@@ -83,14 +77,10 @@ export const createInvoice = (
     notes: notes ?? null,
     taxRate: taxRate ?? null,
   });
-export const getInvoice = (id: string) =>
-  invoke<Invoice>("get_invoice", { id });
 export const listInvoices = (status?: string) =>
   invoke<Invoice[]>("list_invoices", { status: status ?? null });
 export const updateInvoiceStatus = (id: string, status: string) =>
   invoke<Invoice>("update_invoice_status", { id, status });
-export const deleteInvoice = (id: string) =>
-  invoke<void>("delete_invoice", { id });
 export const addLineItem = (
   invoiceId: string,
   description: string,
@@ -105,18 +95,10 @@ export const addLineItem = (
     unitPrice,
     sortOrder,
   });
-export const getLineItems = (invoiceId: string) =>
-  invoke<InvoiceLineItem[]>("get_line_items", { invoiceId });
-export const deleteLineItem = (id: string, invoiceId: string) =>
-  invoke<void>("delete_line_item", { id, invoiceId });
 export const getUninvoicedEntries = (clientId: string) =>
   invoke<TimeEntry[]>("get_uninvoiced_entries", { clientId });
-export const setPaymentLink = (id: string, link: string) =>
-  invoke<Invoice>("set_payment_link", { id, link });
 
 // Estimates
-export const getEstimate = (id: string) =>
-  invoke<Estimate>("get_estimate", { id });
 export const listEstimates = () =>
   invoke<Estimate[]>("list_estimates");
 
@@ -133,28 +115,9 @@ export const renderInvoiceHtml = (
     businessEmail,
     businessAddress,
   });
-export const exportInvoiceHtml = (
-  invoiceId: string,
-  businessName: string,
-  businessEmail: string,
-  businessAddress: string,
-  outputDir: string
-) =>
-  invoke<string>("export_invoice_html", {
-    invoiceId,
-    businessName,
-    businessEmail,
-    businessAddress,
-    outputDir,
-  });
-
 // AI Estimation
 export const runAiEstimate = (apiKey: string, projectDescription: string) =>
   invoke<Estimate>("run_ai_estimate", { apiKey, projectDescription });
-
-// Stripe
-export const createPaymentLink = (apiKey: string, invoiceId: string) =>
-  invoke<string>("create_payment_link", { apiKey, invoiceId });
 
 // Dashboard
 export const getDashboardSummary = () =>
@@ -165,12 +128,8 @@ export const getHoursByProject = (days?: number) =>
   invoke<HoursByProject[]>("get_hours_by_project", { days: days ?? null });
 export const getMonthlyRevenue = (months?: number) =>
   invoke<MonthlyRevenue[]>("get_monthly_revenue", { months: months ?? null });
-export const getEstimateAccuracy = () =>
-  invoke<EstimateAccuracy[]>("get_estimate_accuracy", {});
 
 // Settings
-export const getSetting = (key: string) =>
-  invoke<string | null>("get_setting", { key });
 export const setSetting = (key: string, value: string) =>
   invoke<void>("set_setting", { key, value });
 export const getAllSettings = () =>

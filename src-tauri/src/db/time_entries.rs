@@ -3,7 +3,7 @@ use rusqlite::{params, Connection};
 use uuid::Uuid;
 
 use crate::error::{AppError, AppResult};
-use crate::models::{ActiveTimer, CreateManualTimeEntry, TimeEntry, TimerState};
+use crate::models::{ActiveTimer, TimeEntry, TimerState};
 
 fn row_to_time_entry(row: &rusqlite::Row) -> rusqlite::Result<TimeEntry> {
     Ok(TimeEntry {
@@ -78,59 +78,10 @@ pub fn create_time_entry_from_timer(
     .map_err(AppError::Database)
 }
 
-pub fn create_manual_time_entry(
-    conn: &Connection,
-    input: CreateManualTimeEntry,
-) -> AppResult<TimeEntry> {
-    let id = Uuid::new_v4().to_string();
-    let duration_secs = (input.end_time - input.start_time).num_seconds();
-
-    if duration_secs <= 0 {
-        return Err(AppError::Validation(
-            "End time must be after start time".to_string(),
-        ));
-    }
-
-    conn.execute(
-        "INSERT INTO time_entries (id, project_id, description, start_time, end_time, duration_secs, is_billable, is_manual)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1)",
-        params![
-            id,
-            input.project_id,
-            input.description,
-            input.start_time.to_rfc3339(),
-            input.end_time.to_rfc3339(),
-            duration_secs,
-            input.is_billable,
-        ],
-    )?;
-
-    conn.query_row(
-        "SELECT * FROM time_entries WHERE id = ?1",
-        params![id],
-        |row| row_to_time_entry(row),
-    )
-    .map_err(AppError::Database)
-}
-
 pub fn delete_time_entry(conn: &Connection, id: &str) -> AppResult<()> {
     let affected = conn.execute("DELETE FROM time_entries WHERE id = ?1", params![id])?;
     if affected == 0 {
         return Err(AppError::NotFound(format!("Time entry not found: {id}")));
-    }
-    Ok(())
-}
-
-pub fn link_entries_to_invoice(
-    conn: &Connection,
-    entry_ids: &[String],
-    invoice_id: &str,
-) -> AppResult<()> {
-    for id in entry_ids {
-        conn.execute(
-            "UPDATE time_entries SET invoice_id = ?1 WHERE id = ?2",
-            params![invoice_id, id],
-        )?;
     }
     Ok(())
 }
@@ -375,46 +326,4 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_manual_time_entry() {
-        let (conn, project_id) = setup();
-        let start = Utc::now() - chrono::Duration::hours(2);
-        let end = Utc::now();
-
-        let entry = create_manual_time_entry(
-            &conn,
-            CreateManualTimeEntry {
-                project_id: project_id.clone(),
-                description: Some("Manual work".to_string()),
-                start_time: start,
-                end_time: end,
-                is_billable: true,
-            },
-        )
-        .unwrap();
-
-        assert!(entry.is_manual);
-        assert!(entry.duration_secs > 0);
-
-        let entries = list_time_entries_by_project(&conn, &project_id).unwrap();
-        assert_eq!(entries.len(), 1);
-    }
-
-    #[test]
-    fn test_manual_entry_invalid_times() {
-        let (conn, project_id) = setup();
-        let now = Utc::now();
-
-        let result = create_manual_time_entry(
-            &conn,
-            CreateManualTimeEntry {
-                project_id,
-                description: None,
-                start_time: now,
-                end_time: now - chrono::Duration::hours(1),
-                is_billable: true,
-            },
-        );
-        assert!(result.is_err());
-    }
 }

@@ -125,22 +125,6 @@ pub fn update_invoice_totals(conn: &Connection, invoice_id: &str) -> AppResult<I
     get_invoice(conn, invoice_id)
 }
 
-pub fn set_payment_link(conn: &Connection, id: &str, link: &str) -> AppResult<Invoice> {
-    conn.execute(
-        "UPDATE invoices SET payment_link = ?1, updated_at = ?2 WHERE id = ?3",
-        params![link, Utc::now().to_rfc3339(), id],
-    )?;
-    get_invoice(conn, id)
-}
-
-pub fn delete_invoice(conn: &Connection, id: &str) -> AppResult<()> {
-    let affected = conn.execute("DELETE FROM invoices WHERE id = ?1", params![id])?;
-    if affected == 0 {
-        return Err(AppError::NotFound(format!("Invoice not found: {id}")));
-    }
-    Ok(())
-}
-
 // Line items
 pub fn add_line_item(
     conn: &Connection,
@@ -189,26 +173,6 @@ pub fn get_line_items(conn: &Connection, invoice_id: &str) -> AppResult<Vec<Invo
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(items)
-}
-
-pub fn delete_line_item(conn: &Connection, id: &str, invoice_id: &str) -> AppResult<()> {
-    conn.execute(
-        "DELETE FROM invoice_line_items WHERE id = ?1",
-        params![id],
-    )?;
-    update_invoice_totals(conn, invoice_id)?;
-    Ok(())
-}
-
-pub fn count_invoices_this_month(conn: &Connection) -> AppResult<i32> {
-    let now = Utc::now();
-    let month_start = now.format("%Y-%m-01").to_string();
-    let count: i32 = conn.query_row(
-        "SELECT COUNT(*) FROM invoices WHERE created_at >= ?1",
-        params![month_start],
-        |row| row.get(0),
-    )?;
-    Ok(count)
 }
 
 #[cfg(test)]
@@ -292,25 +256,4 @@ mod tests {
         assert_eq!(paid.status, InvoiceStatus::Paid);
     }
 
-    #[test]
-    fn test_delete_line_item_updates_totals() {
-        let (conn, client_id) = setup();
-        let invoice = create_invoice(
-            &conn,
-            &client_id,
-            "2025-01-01T00:00:00Z",
-            "2025-01-31T00:00:00Z",
-            None,
-            None,
-        )
-        .unwrap();
-
-        let item = add_line_item(&conn, &invoice.id, "Work", 10.0, 100.0, 0).unwrap();
-        let with_item = get_invoice(&conn, &invoice.id).unwrap();
-        assert_eq!(with_item.total, 1000.0);
-
-        delete_line_item(&conn, &item.id, &invoice.id).unwrap();
-        let without_item = get_invoice(&conn, &invoice.id).unwrap();
-        assert_eq!(without_item.total, 0.0);
-    }
 }

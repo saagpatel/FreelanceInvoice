@@ -14,14 +14,6 @@ pub fn create_project(state: State<DbState>, input: CreateProject) -> AppResult<
 }
 
 #[tauri::command]
-pub fn get_project(state: State<DbState>, id: String) -> AppResult<Project> {
-    let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
-        rusqlite::Error::InvalidParameterName(e.to_string()),
-    ))?;
-    projects::get_project(&conn, &id)
-}
-
-#[tauri::command]
 pub fn list_projects(state: State<DbState>, status: Option<String>) -> AppResult<Vec<Project>> {
     let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
         rusqlite::Error::InvalidParameterName(e.to_string()),

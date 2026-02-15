@@ -34,14 +34,6 @@ pub struct MonthlyRevenue {
     pub revenue: f64,
 }
 
-#[derive(Debug, Serialize)]
-pub struct EstimateAccuracy {
-    pub project_name: String,
-    pub estimated_hours: f64,
-    pub actual_hours: f64,
-    pub accuracy_pct: f64,
-}
-
 pub fn get_dashboard_summary(conn: &Connection) -> AppResult<DashboardSummary> {
     let total_revenue: f64 = conn
         .query_row(
@@ -188,41 +180,6 @@ pub fn get_monthly_revenue(conn: &Connection, months: Option<i32>) -> AppResult<
             Ok(MonthlyRevenue {
                 month: row.get(0)?,
                 revenue: row.get(1)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
-
-    Ok(results)
-}
-
-pub fn get_estimate_accuracy(conn: &Connection) -> AppResult<Vec<EstimateAccuracy>> {
-    let mut stmt = conn.prepare(
-        "SELECT p.name,
-                p.budget_hours,
-                SUM(te.duration_secs) / 3600.0 as actual_hours
-         FROM projects p
-         JOIN time_entries te ON te.project_id = p.id
-         WHERE p.status = 'completed' AND p.budget_hours IS NOT NULL
-         GROUP BY p.id, p.name, p.budget_hours
-         HAVING actual_hours > 0
-         ORDER BY p.name",
-    )?;
-
-    let results = stmt
-        .query_map([], |row| {
-            let name: String = row.get(0)?;
-            let estimated: f64 = row.get(1)?;
-            let actual: f64 = row.get(2)?;
-            let accuracy = if estimated > 0.0 {
-                (actual / estimated) * 100.0
-            } else {
-                0.0
-            };
-            Ok(EstimateAccuracy {
-                project_name: name,
-                estimated_hours: estimated,
-                actual_hours: actual,
-                accuracy_pct: accuracy,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;

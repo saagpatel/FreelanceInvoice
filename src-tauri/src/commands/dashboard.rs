@@ -45,13 +45,3 @@ pub fn get_monthly_revenue(
     })?;
     dashboard::get_monthly_revenue(&conn, months)
 }
-
-#[tauri::command]
-pub fn get_estimate_accuracy(
-    state: State<DbState>,
-) -> AppResult<Vec<dashboard::EstimateAccuracy>> {
-    let conn = state.0.lock().map_err(|e| {
-        AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string()))
-    })?;
-    dashboard::get_estimate_accuracy(&conn)
-}

@@ -28,9 +28,6 @@ pub enum AppError {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-
-    #[error("Tier limit reached: {0}")]
-    TierLimit(String),
 }
 
 impl Serialize for AppError {

@@ -113,15 +113,6 @@ pub struct TimeEntry {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateManualTimeEntry {
-    pub project_id: String,
-    pub description: Option<String>,
-    pub start_time: DateTime<Utc>,
-    pub end_time: DateTime<Utc>,
-    pub is_billable: bool,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum InvoiceStatus {
@@ -224,12 +215,4 @@ pub struct TimerState {
 pub struct AppSetting {
     pub key: String,
     pub value: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum Tier {
-    Free,
-    Pro,
-    Premium,
 }

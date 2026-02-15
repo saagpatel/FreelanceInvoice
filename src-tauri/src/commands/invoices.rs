@@ -21,14 +21,6 @@ pub fn create_invoice(
 }
 
 #[tauri::command]
-pub fn get_invoice(state: State<DbState>, id: String) -> AppResult<Invoice> {
-    let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
-        rusqlite::Error::InvalidParameterName(e.to_string()),
-    ))?;
-    invoices::get_invoice(&conn, &id)
-}
-
-#[tauri::command]
 pub fn list_invoices(state: State<DbState>, status: Option<String>) -> AppResult<Vec<Invoice>> {
     let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
         rusqlite::Error::InvalidParameterName(e.to_string()),
@@ -51,14 +43,6 @@ pub fn update_invoice_status(
 }
 
 #[tauri::command]
-pub fn delete_invoice(state: State<DbState>, id: String) -> AppResult<()> {
-    let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
-        rusqlite::Error::InvalidParameterName(e.to_string()),
-    ))?;
-    invoices::delete_invoice(&conn, &id)
-}
-
-#[tauri::command]
 pub fn add_line_item(
     state: State<DbState>,
     invoice_id: String,
@@ -74,33 +58,9 @@ pub fn add_line_item(
 }
 
 #[tauri::command]
-pub fn get_line_items(state: State<DbState>, invoice_id: String) -> AppResult<Vec<InvoiceLineItem>> {
-    let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
-        rusqlite::Error::InvalidParameterName(e.to_string()),
-    ))?;
-    invoices::get_line_items(&conn, &invoice_id)
-}
-
-#[tauri::command]
-pub fn delete_line_item(state: State<DbState>, id: String, invoice_id: String) -> AppResult<()> {
-    let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
-        rusqlite::Error::InvalidParameterName(e.to_string()),
-    ))?;
-    invoices::delete_line_item(&conn, &id, &invoice_id)
-}
-
-#[tauri::command]
 pub fn get_uninvoiced_entries(state: State<DbState>, client_id: String) -> AppResult<Vec<TimeEntry>> {
     let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
         rusqlite::Error::InvalidParameterName(e.to_string()),
     ))?;
     time_entries::list_uninvoiced_entries_by_client(&conn, &client_id)
-}
-
-#[tauri::command]
-pub fn set_payment_link(state: State<DbState>, id: String, link: String) -> AppResult<Invoice> {
-    let conn = state.0.lock().map_err(|e| crate::error::AppError::Database(
-        rusqlite::Error::InvalidParameterName(e.to_string()),
-    ))?;
-    invoices::set_payment_link(&conn, &id, &link)
 }

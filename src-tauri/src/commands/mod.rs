@@ -5,5 +5,4 @@ pub mod invoices;
 pub mod pdf;
 pub mod projects;
 pub mod settings;
-pub mod stripe;
 pub mod timer;

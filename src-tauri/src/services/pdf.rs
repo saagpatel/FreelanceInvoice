@@ -1,7 +1,6 @@
 use handlebars::Handlebars;
 use rusqlite::Connection;
 use serde::Serialize;
-use std::path::PathBuf;
 
 use crate::db::{clients, invoices};
 use crate::error::{AppError, AppResult};
@@ -96,26 +95,6 @@ pub fn render_invoice_html(
 
     let html = hbs.render("invoice", &data)?;
     Ok(html)
-}
-
-pub fn save_invoice_html(
-    conn: &Connection,
-    invoice_id: &str,
-    business_name: &str,
-    business_email: &str,
-    business_address: &str,
-    output_dir: &PathBuf,
-) -> AppResult<PathBuf> {
-    let html = render_invoice_html(conn, invoice_id, business_name, business_email, business_address)?;
-    let invoice = invoices::get_invoice(conn, invoice_id)?;
-
-    let filename = format!("{}.html", invoice.invoice_number);
-    let output_path = output_dir.join(filename);
-
-    std::fs::create_dir_all(output_dir)?;
-    std::fs::write(&output_path, html)?;
-
-    Ok(output_path)
 }
 
 #[cfg(test)]

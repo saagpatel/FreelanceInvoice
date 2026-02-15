@@ -7,14 +7,6 @@ use crate::services::ai_estimator;
 use crate::DbState;
 
 #[tauri::command]
-pub fn get_estimate(state: State<DbState>, id: String) -> AppResult<Estimate> {
-    let conn = state.0.lock().map_err(|e| {
-        AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string()))
-    })?;
-    estimates::get_estimate(&conn, &id)
-}
-
-#[tauri::command]
 pub fn list_estimates(state: State<DbState>) -> AppResult<Vec<Estimate>> {
     let conn = state.0.lock().map_err(|e| {
         AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string()))
