@@ -5,11 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:lean": "node scripts/lean-run.mjs dev",
     "build": "tsc && vite build && pnpm size:check",
     "build:raw": "tsc && vite build",
     "size:check": "node scripts/check-bundle-size.mjs",
+    "clean:heavy": "node scripts/cleanup.mjs heavy",
+    "clean:all-local": "node scripts/cleanup.mjs all-local",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev:lean": "node scripts/lean-run.mjs tauri dev"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
