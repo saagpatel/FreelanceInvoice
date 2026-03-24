@@ -8,9 +8,10 @@ use crate::DbState;
 
 #[tauri::command]
 pub fn list_estimates(state: State<DbState>) -> AppResult<Vec<Estimate>> {
-    let conn = state.0.lock().map_err(|e| {
-        AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string()))
-    })?;
+    let conn = state
+        .0
+        .lock()
+        .map_err(|e| AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string())))?;
     estimates::list_estimates(&conn)
 }
 
@@ -34,14 +35,18 @@ pub async fn run_ai_estimate(
         ai_estimator::gather_historical_data_external(&conn)?
     };
 
-    let estimate =
-        ai_estimator::estimate_project_with_history(&api_key, &project_description, historical_data)
-            .await?;
+    let estimate = ai_estimator::estimate_project_with_history(
+        &api_key,
+        &project_description,
+        historical_data,
+    )
+    .await?;
 
     // Save the estimate under a new lock
-    let conn = state.0.lock().map_err(|e| {
-        AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string()))
-    })?;
+    let conn = state
+        .0
+        .lock()
+        .map_err(|e| AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string())))?;
 
     let risk_flags = serde_json::to_value(&estimate.risk_flags).unwrap_or_default();
     let similar = serde_json::json!([]);

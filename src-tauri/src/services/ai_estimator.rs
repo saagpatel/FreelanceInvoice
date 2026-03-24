@@ -45,16 +45,16 @@ pub struct HistoricalProject {
     pub actual_hours: f64,
 }
 
-fn build_prompt(
-    project_description: &str,
-    historical_projects: &[HistoricalProject],
-) -> String {
+fn build_prompt(project_description: &str, historical_projects: &[HistoricalProject]) -> String {
     let mut prompt = String::from(
         "You are a project estimation expert for freelance software development. \
          Analyze the following project description and provide an hour estimate.\n\n",
     );
 
-    prompt.push_str(&format!("## Project Description\n{}\n\n", project_description));
+    prompt.push_str(&format!(
+        "## Project Description\n{}\n\n",
+        project_description
+    ));
 
     if historical_projects.is_empty() {
         prompt.push_str(

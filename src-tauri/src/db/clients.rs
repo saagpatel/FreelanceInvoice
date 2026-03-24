@@ -225,12 +225,12 @@ mod tests {
             &client.id,
             UpdateClient {
                 name: Some("New Name".to_string()),
-                email: Some("new@email.com".to_string()),
+                email: Some(Some("new@email.com".to_string())),
                 company: None,
                 address: None,
                 phone: None,
                 notes: None,
-                hourly_rate: Some(200.0),
+                hourly_rate: Some(Some(200.0)),
             },
         )
         .unwrap();
