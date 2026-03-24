@@ -28,6 +28,10 @@ pub enum AppError {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[cfg_attr(test, allow(dead_code))]
+    #[error("Security error: {0}")]
+    Security(String),
 }
 
 impl Serialize for AppError {

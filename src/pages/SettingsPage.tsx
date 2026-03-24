@@ -7,33 +7,52 @@ import { useAppStore } from "../stores/appStore";
 
 export function SettingsPage() {
   const store = useAppStore();
+  const [tier, setTier] = useState(store.tier);
   const [businessName, setBusinessName] = useState("");
   const [businessEmail, setBusinessEmail] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
   const [defaultRate, setDefaultRate] = useState("");
   const [claudeKey, setClaudeKey] = useState("");
   const [stripeKey, setStripeKey] = useState("");
+  const [stripeSuccessUrl, setStripeSuccessUrl] = useState("");
+  const [stripeCancelUrl, setStripeCancelUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    setTier(store.tier);
     setBusinessName(store.businessName);
     setBusinessEmail(store.businessEmail);
     setBusinessAddress(store.businessAddress);
     setDefaultRate(String(store.defaultHourlyRate));
     setClaudeKey(store.claudeApiKey);
     setStripeKey(store.stripeApiKey);
-  }, [store.businessName, store.businessEmail, store.businessAddress, store.defaultHourlyRate, store.claudeApiKey, store.stripeApiKey]);
+    setStripeSuccessUrl(store.stripeSuccessUrl);
+    setStripeCancelUrl(store.stripeCancelUrl);
+  }, [
+    store.tier,
+    store.businessName,
+    store.businessEmail,
+    store.businessAddress,
+    store.defaultHourlyRate,
+    store.claudeApiKey,
+    store.stripeApiKey,
+    store.stripeSuccessUrl,
+    store.stripeCancelUrl,
+  ]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      await store.saveSetting("tier", tier);
       await store.saveSetting("business_name", businessName);
       await store.saveSetting("business_email", businessEmail);
       await store.saveSetting("business_address", businessAddress);
       await store.saveSetting("default_hourly_rate", defaultRate);
       await store.saveSetting("claude_api_key", claudeKey);
       await store.saveSetting("stripe_api_key", stripeKey);
+      await store.saveSetting("stripe_success_url", stripeSuccessUrl);
+      await store.saveSetting("stripe_cancel_url", stripeCancelUrl);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -51,12 +70,27 @@ export function SettingsPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Plan</h2>
             <p className="text-sm text-gray-500">
-              Your current subscription tier
+              Stripe payment links require Premium
             </p>
           </div>
-          <Badge variant={store.tier === "free" ? "default" : "success"}>
-            {store.tier.toUpperCase()}
+          <Badge variant={tier === "free" ? "default" : "success"}>
+            {tier.toUpperCase()}
           </Badge>
+        </div>
+        <div className="mt-4 flex gap-2">
+          {(["free", "pro", "premium"] as const).map((option) => (
+            <button
+              key={option}
+              onClick={() => setTier(option)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                tier === option
+                  ? "bg-primary-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {option.toUpperCase()}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -119,9 +153,7 @@ export function SettingsPage() {
 
       {/* API Keys */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          API Keys
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">API Keys</h2>
         <div className="space-y-4">
           <Input
             label="Claude API Key"
@@ -131,7 +163,8 @@ export function SettingsPage() {
             placeholder="sk-ant-..."
           />
           <p className="text-xs text-gray-500">
-            Required for AI project estimation. Get your key from console.anthropic.com
+            Required for AI project estimation. Get your key from
+            console.anthropic.com
           </p>
           <Input
             label="Stripe API Key"
@@ -140,8 +173,23 @@ export function SettingsPage() {
             onChange={(e) => setStripeKey(e.target.value)}
             placeholder="sk_live_..."
           />
+          <Input
+            label="Stripe success URL"
+            type="url"
+            value={stripeSuccessUrl}
+            onChange={(e) => setStripeSuccessUrl(e.target.value)}
+            placeholder="https://yourapp.com/payments/success"
+          />
+          <Input
+            label="Stripe cancel URL"
+            type="url"
+            value={stripeCancelUrl}
+            onChange={(e) => setStripeCancelUrl(e.target.value)}
+            placeholder="https://yourapp.com/payments/cancel"
+          />
           <p className="text-xs text-gray-500">
-            Required for payment link generation. Premium tier only.
+            Used for Stripe payment-link generation on sent/overdue invoices.
+            Premium tier and valid return URLs required.
           </p>
         </div>
       </div>

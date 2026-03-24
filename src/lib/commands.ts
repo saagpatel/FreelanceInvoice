@@ -11,21 +11,22 @@ import type {
   ActiveTimer,
   Invoice,
   InvoiceLineItem,
+  CreateInvoiceDraftAtomicInput,
   Estimate,
   AppSetting,
   DashboardSummary,
   RevenueByClient,
   HoursByProject,
   MonthlyRevenue,
+  CreateManualTimeEntryInput,
+  UpdateManualTimeEntryInput,
 } from "../types";
 
 // Clients
 export const createClient = (input: CreateClient) =>
   invoke<Client>("create_client", { input });
-export const getClient = (id: string) =>
-  invoke<Client>("get_client", { id });
-export const listClients = () =>
-  invoke<Client[]>("list_clients");
+export const getClient = (id: string) => invoke<Client>("get_client", { id });
+export const listClients = () => invoke<Client[]>("list_clients");
 export const updateClient = (id: string, input: UpdateClient) =>
   invoke<Client>("update_client", { id, input });
 export const deleteClient = (id: string) =>
@@ -49,18 +50,20 @@ export const startTimer = (projectId: string, description?: string) =>
     projectId,
     description: description ?? null,
   });
-export const stopTimer = () =>
-  invoke<TimeEntry>("stop_timer");
-export const pauseTimer = () =>
-  invoke<ActiveTimer>("pause_timer");
-export const resumeTimer = () =>
-  invoke<ActiveTimer>("resume_timer");
-export const getTimerState = () =>
-  invoke<TimerState>("get_timer_state");
+export const stopTimer = () => invoke<TimeEntry>("stop_timer");
+export const pauseTimer = () => invoke<ActiveTimer>("pause_timer");
+export const resumeTimer = () => invoke<ActiveTimer>("resume_timer");
+export const getTimerState = () => invoke<TimerState>("get_timer_state");
 export const listTimeEntries = (projectId: string) =>
   invoke<TimeEntry[]>("list_time_entries", { projectId });
 export const deleteTimeEntry = (id: string) =>
   invoke<void>("delete_time_entry", { id });
+export const createManualTimeEntry = (input: CreateManualTimeEntryInput) =>
+  invoke<TimeEntry>("create_manual_time_entry", { input });
+export const updateManualTimeEntry = (
+  id: string,
+  input: UpdateManualTimeEntryInput,
+) => invoke<TimeEntry>("update_manual_time_entry", { id, input });
 
 // Invoices
 export const createInvoice = (
@@ -68,7 +71,7 @@ export const createInvoice = (
   issueDate: string,
   dueDate: string,
   notes?: string,
-  taxRate?: number
+  taxRate?: number,
 ) =>
   invoke<Invoice>("create_invoice", {
     clientId,
@@ -86,7 +89,7 @@ export const addLineItem = (
   description: string,
   quantity: number,
   unitPrice: number,
-  sortOrder: number
+  sortOrder: number,
 ) =>
   invoke<InvoiceLineItem>("add_line_item", {
     invoiceId,
@@ -97,19 +100,53 @@ export const addLineItem = (
   });
 export const getUninvoicedEntries = (clientId: string) =>
   invoke<TimeEntry[]>("get_uninvoiced_entries", { clientId });
+export const createInvoiceDraftAtomic = (
+  input: CreateInvoiceDraftAtomicInput,
+) => invoke<Invoice>("create_invoice_draft_atomic", { input });
+export const setInvoicePaymentLink = (
+  invoiceId: string,
+  paymentLink?: string | null,
+) =>
+  invoke<Invoice>("set_invoice_payment_link", {
+    invoiceId,
+    paymentLink: paymentLink ?? null,
+  });
+export const createStripePaymentLink = (
+  invoiceId: string,
+  stripeApiKey: string,
+  successUrl?: string,
+  cancelUrl?: string,
+) =>
+  invoke<Invoice>("create_stripe_payment_link", {
+    invoiceId,
+    stripeApiKey,
+    successUrl: successUrl ?? null,
+    cancelUrl: cancelUrl ?? null,
+  });
 
 // Estimates
-export const listEstimates = () =>
-  invoke<Estimate[]>("list_estimates");
+export const listEstimates = () => invoke<Estimate[]>("list_estimates");
 
 // PDF
 export const renderInvoiceHtml = (
   invoiceId: string,
   businessName: string,
   businessEmail: string,
-  businessAddress: string
+  businessAddress: string,
 ) =>
   invoke<string>("render_invoice_html", {
+    invoiceId,
+    businessName,
+    businessEmail,
+    businessAddress,
+  });
+export const exportInvoicePdf = (
+  invoiceId: string,
+  businessName: string,
+  businessEmail: string,
+  businessAddress: string,
+) =>
+  invoke<number[]>("export_invoice_pdf", {
     invoiceId,
     businessName,
     businessEmail,
@@ -132,5 +169,4 @@ export const getMonthlyRevenue = (months?: number) =>
 // Settings
 export const setSetting = (key: string, value: string) =>
   invoke<void>("set_setting", { key, value });
-export const getAllSettings = () =>
-  invoke<AppSetting[]>("get_all_settings");
+export const getAllSettings = () => invoke<AppSetting[]>("get_all_settings");

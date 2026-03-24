@@ -136,7 +136,39 @@ fn run_migrations(conn: &Connection) -> AppResult<()> {
     // Current schema is a single idempotent migration; applying it directly
     // avoids version bookkeeping table maintenance.
     conn.execute_batch(MIGRATION_V1)?;
+    ensure_active_timer_columns(conn)?;
     Ok(())
+}
+
+fn ensure_active_timer_columns(conn: &Connection) -> AppResult<()> {
+    if !column_exists(conn, "active_timer", "started_at")? {
+        conn.execute("ALTER TABLE active_timer ADD COLUMN started_at TEXT", [])?;
+        conn.execute(
+            "UPDATE active_timer SET started_at = start_time WHERE started_at IS NULL",
+            [],
+        )?;
+    }
+
+    if !column_exists(conn, "active_timer", "segment_started_at")? {
+        conn.execute(
+            "ALTER TABLE active_timer ADD COLUMN segment_started_at TEXT",
+            [],
+        )?;
+        conn.execute(
+            "UPDATE active_timer SET segment_started_at = start_time WHERE segment_started_at IS NULL",
+            [],
+        )?;
+    }
+
+    Ok(())
+}
+
+fn column_exists(conn: &Connection, table: &str, column: &str) -> AppResult<bool> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+    let columns = stmt
+        .query_map([], |row| row.get::<_, String>(1))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(columns.iter().any(|name| name == column))
 }
 
 #[cfg(test)]
