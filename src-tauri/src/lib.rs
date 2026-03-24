@@ -42,17 +42,23 @@ pub fn run() {
             commands::timer::get_timer_state,
             commands::timer::list_time_entries,
             commands::timer::delete_time_entry,
+            commands::timer::create_manual_time_entry,
+            commands::timer::update_manual_time_entry,
             // Invoices
             commands::invoices::create_invoice,
+            commands::invoices::create_invoice_draft_atomic,
             commands::invoices::list_invoices,
             commands::invoices::update_invoice_status,
             commands::invoices::add_line_item,
             commands::invoices::get_uninvoiced_entries,
+            commands::invoices::set_invoice_payment_link,
+            commands::invoices::create_stripe_payment_link,
             // Estimates
             commands::estimates::list_estimates,
             commands::estimates::run_ai_estimate,
             // PDF
             commands::pdf::render_invoice_html,
+            commands::pdf::export_invoice_pdf,
             // Dashboard
             commands::dashboard::get_dashboard_summary,
             commands::dashboard::get_revenue_by_client,
@@ -67,5 +73,13 @@ pub fn run() {
 }
 
 fn dirs_next() -> Option<std::path::PathBuf> {
-    dirs::data_local_dir().map(|p| p.join("com.freelanceinvoice.app"))
+    dirs::data_local_dir().map(|base| {
+        let current = base.join("com.freelanceinvoice.desktop");
+        let legacy = base.join("com.freelanceinvoice.app");
+        if current.exists() || !legacy.exists() {
+            current
+        } else {
+            legacy
+        }
+    })
 }

@@ -74,8 +74,7 @@ pub fn list_projects(conn: &Connection, status: Option<&str>) -> AppResult<Vec<P
 }
 
 pub fn list_projects_by_client(conn: &Connection, client_id: &str) -> AppResult<Vec<Project>> {
-    let mut stmt =
-        conn.prepare("SELECT * FROM projects WHERE client_id = ?1 ORDER BY name ASC")?;
+    let mut stmt = conn.prepare("SELECT * FROM projects WHERE client_id = ?1 ORDER BY name ASC")?;
     let projects = stmt
         .query_map(params![client_id], |row| row_to_project(row))?
         .collect::<Result<Vec<_>, _>>()?;
@@ -234,8 +233,8 @@ mod tests {
                 name: Some("New Name".to_string()),
                 description: None,
                 status: Some(ProjectStatus::Completed),
-                hourly_rate: None,
-                budget_hours: None,
+                hourly_rate: Some(None),
+                budget_hours: Some(None),
             },
         )
         .unwrap();

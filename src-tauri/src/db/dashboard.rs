@@ -134,7 +134,10 @@ pub fn get_revenue_by_client(conn: &Connection) -> AppResult<Vec<RevenueByClient
     Ok(results)
 }
 
-pub fn get_hours_by_project(conn: &Connection, days: Option<i32>) -> AppResult<Vec<HoursByProject>> {
+pub fn get_hours_by_project(
+    conn: &Connection,
+    days: Option<i32>,
+) -> AppResult<Vec<HoursByProject>> {
     let days = days.unwrap_or(30);
     let mut stmt = conn.prepare(
         "SELECT p.name,
@@ -162,7 +165,10 @@ pub fn get_hours_by_project(conn: &Connection, days: Option<i32>) -> AppResult<V
     Ok(results)
 }
 
-pub fn get_monthly_revenue(conn: &Connection, months: Option<i32>) -> AppResult<Vec<MonthlyRevenue>> {
+pub fn get_monthly_revenue(
+    conn: &Connection,
+    months: Option<i32>,
+) -> AppResult<Vec<MonthlyRevenue>> {
     let months = months.unwrap_or(12);
     let modifier = format!("-{months} months");
     let mut stmt = conn.prepare(

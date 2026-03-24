@@ -33,6 +33,8 @@ interface AppStore {
   defaultHourlyRate: number;
   claudeApiKey: string;
   stripeApiKey: string;
+  stripeSuccessUrl: string;
+  stripeCancelUrl: string;
   theme: Theme;
   loading: boolean;
 
@@ -48,6 +50,8 @@ export const useAppStore = create<AppStore>()((set) => ({
   defaultHourlyRate: DEFAULT_HOURLY_RATE,
   claudeApiKey: "",
   stripeApiKey: "",
+  stripeSuccessUrl: "",
+  stripeCancelUrl: "",
   theme: DEFAULT_THEME,
   loading: true,
 
@@ -64,6 +68,8 @@ export const useAppStore = create<AppStore>()((set) => ({
         defaultHourlyRate: parseHourlyRate(map.get("default_hourly_rate")),
         claudeApiKey: map.get("claude_api_key") ?? "",
         stripeApiKey: map.get("stripe_api_key") ?? "",
+        stripeSuccessUrl: map.get("stripe_success_url") ?? "",
+        stripeCancelUrl: map.get("stripe_cancel_url") ?? "",
         theme: parseTheme(map.get("theme")),
         loading: false,
       });
@@ -83,6 +89,8 @@ export const useAppStore = create<AppStore>()((set) => ({
       default_hourly_rate: "defaultHourlyRate",
       claude_api_key: "claudeApiKey",
       stripe_api_key: "stripeApiKey",
+      stripe_success_url: "stripeSuccessUrl",
+      stripe_cancel_url: "stripeCancelUrl",
       theme: "theme",
     };
     const stateKey = keyMap[key];

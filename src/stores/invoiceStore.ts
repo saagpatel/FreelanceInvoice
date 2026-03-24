@@ -1,24 +1,25 @@
 import { create } from "zustand";
 import type { InvoiceLineItem } from "../types";
 
+type DraftLineItem = Omit<InvoiceLineItem, "id" | "invoice_id"> & {
+  source_time_entry_ids?: string[];
+};
+
 interface InvoiceBuilderStore {
   clientId: string | null;
   issueDate: string;
   dueDate: string;
   notes: string;
   taxRate: number;
-  lineItems: Omit<InvoiceLineItem, "id" | "invoice_id">[];
+  lineItems: DraftLineItem[];
 
   setClientId: (id: string | null) => void;
   setIssueDate: (date: string) => void;
   setDueDate: (date: string) => void;
   setNotes: (notes: string) => void;
   setTaxRate: (rate: number) => void;
-  addLineItem: (item: Omit<InvoiceLineItem, "id" | "invoice_id">) => void;
-  updateLineItem: (
-    index: number,
-    item: Omit<InvoiceLineItem, "id" | "invoice_id">
-  ) => void;
+  addLineItem: (item: DraftLineItem) => void;
+  updateLineItem: (index: number, item: DraftLineItem) => void;
   removeLineItem: (index: number) => void;
   reset: () => void;
 
@@ -73,8 +74,7 @@ export const useInvoiceStore = create<InvoiceBuilderStore>()((set, get) => ({
       lineItems: [],
     }),
 
-  subtotal: () =>
-    get().lineItems.reduce((sum, item) => sum + item.amount, 0),
+  subtotal: () => get().lineItems.reduce((sum, item) => sum + item.amount, 0),
 
   taxAmount: () => {
     const sub = get().subtotal();

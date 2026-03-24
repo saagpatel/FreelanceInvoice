@@ -5,8 +5,7 @@ import {
   getClient,
   getUninvoicedEntries,
   listProjectsByClient,
-  createInvoice,
-  addLineItem,
+  createInvoiceDraftAtomic,
 } from "../lib/commands";
 import { formatHours } from "../lib/formatters";
 import { useInvoiceStore } from "../stores/invoiceStore";
@@ -17,7 +16,9 @@ import { Select } from "../components/shared/Select";
 import { LineItemRow } from "../components/invoices/LineItemRow";
 import { InvoicePreview } from "../components/invoices/InvoicePreview";
 
-type LineItemData = Omit<InvoiceLineItem, "id" | "invoice_id">;
+type LineItemData = Omit<InvoiceLineItem, "id" | "invoice_id"> & {
+  source_time_entry_ids?: string[];
+};
 
 export function InvoiceBuilderPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -59,9 +60,7 @@ export function InvoiceBuilderPage() {
       const data = await listClients();
       setClients(data);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load clients"
-      );
+      setError(err instanceof Error ? err.message : "Failed to load clients");
     } finally {
       setLoadingClients(false);
     }
@@ -96,17 +95,13 @@ export function InvoiceBuilderPage() {
         setSelectedClient(client);
 
         // Build a project name lookup
-        const projectNames = new Map(
-          projects.map((p) => [p.id, p.name])
-        );
+        const projectNames = new Map(projects.map((p) => [p.id, p.name]));
 
         // Convert uninvoiced time entries to line items
         if (entries.length > 0) {
           const timeLineItems: LineItemData[] = entries.map(
             (entry: TimeEntry, idx: number) => {
-              const hours = parseFloat(
-                (entry.duration_secs / 3600).toFixed(2)
-              );
+              const hours = parseFloat((entry.duration_secs / 3600).toFixed(2));
               const projectName =
                 projectNames.get(entry.project_id) ?? "Project";
               const description = entry.description
@@ -120,8 +115,9 @@ export function InvoiceBuilderPage() {
                 unit_price: rate,
                 amount: parseFloat((hours * rate).toFixed(2)),
                 sort_order: idx,
+                source_time_entry_ids: [entry.id],
               };
-            }
+            },
           );
 
           // Replace existing line items with auto-populated ones
@@ -131,9 +127,7 @@ export function InvoiceBuilderPage() {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error
-              ? err.message
-              : "Failed to load client data"
+            err instanceof Error ? err.message : "Failed to load client data",
           );
         }
       } finally {
@@ -165,11 +159,15 @@ export function InvoiceBuilderPage() {
       unit_price: 0,
       amount: 0,
       sort_order: lineItems.length,
+      source_time_entry_ids: [],
     });
   }
 
   function handleUpdateItem(index: number, item: LineItemData) {
-    updateLineItem(index, item);
+    updateLineItem(index, {
+      ...item,
+      source_time_entry_ids: lineItems[index]?.source_time_entry_ids ?? [],
+    });
   }
 
   async function handleSaveDraft() {
@@ -187,34 +185,27 @@ export function InvoiceBuilderPage() {
     setSuccess(null);
 
     try {
-      const invoice = await createInvoice(
-        clientId,
-        issueDate,
-        dueDate,
-        notes || undefined,
-        taxRate > 0 ? taxRate : undefined
-      );
-
-      // Add each line item to the invoice
-      for (let i = 0; i < lineItems.length; i++) {
-        const item = lineItems[i];
-        await addLineItem(
-          invoice.id,
-          item.description,
-          item.quantity,
-          item.unit_price,
-          item.sort_order
-        );
-      }
+      const invoice = await createInvoiceDraftAtomic({
+        client_id: clientId,
+        issue_date: issueDate,
+        due_date: dueDate,
+        notes: notes || null,
+        tax_rate: taxRate > 0 ? taxRate : null,
+        line_items: lineItems.map((item, index) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          sort_order: index,
+          source_time_entry_ids: item.source_time_entry_ids ?? [],
+        })),
+      });
 
       setSuccess(`Invoice #${invoice.invoice_number} saved as draft.`);
       reset();
       setSelectedClient(null);
       setShowPreview(false);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to save invoice"
-      );
+      setError(err instanceof Error ? err.message : "Failed to save invoice");
     } finally {
       setSaving(false);
     }
@@ -281,9 +272,7 @@ export function InvoiceBuilderPage() {
         <div className="space-y-6">
           {/* Client Selection */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Client
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Client</h2>
             <Select
               label="Select Client"
               options={clientOptions}
@@ -300,9 +289,7 @@ export function InvoiceBuilderPage() {
 
           {/* Dates */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Dates
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Dates</h2>
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Issue Date"
@@ -325,7 +312,11 @@ export function InvoiceBuilderPage() {
               <h2 className="text-lg font-semibold text-gray-900">
                 Line Items
               </h2>
-              <Button variant="secondary" size="sm" onClick={handleAddManualItem}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleAddManualItem}
+              >
                 + Add Item
               </Button>
             </div>
@@ -374,9 +365,7 @@ export function InvoiceBuilderPage() {
 
           {/* Tax & Totals */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Totals
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Totals</h2>
             <div className="max-w-xs ml-auto space-y-3">
               <Input
                 label="Tax Rate (%)"
@@ -423,9 +412,7 @@ export function InvoiceBuilderPage() {
 
           {/* Notes */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Notes
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Notes</h2>
             <TextArea
               label="Invoice Notes"
               value={notes}

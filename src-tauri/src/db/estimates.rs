@@ -129,10 +129,32 @@ mod tests {
         let conn = init_db_in_memory().unwrap();
         let empty = serde_json::json!([]);
 
-        save_estimate(&conn, "Project A", 10.0, 8.0, 5.0, 0.8, &empty, &empty, None, None)
-            .unwrap();
-        save_estimate(&conn, "Project B", 20.0, 15.0, 10.0, 0.6, &empty, &empty, None, None)
-            .unwrap();
+        save_estimate(
+            &conn,
+            "Project A",
+            10.0,
+            8.0,
+            5.0,
+            0.8,
+            &empty,
+            &empty,
+            None,
+            None,
+        )
+        .unwrap();
+        save_estimate(
+            &conn,
+            "Project B",
+            20.0,
+            15.0,
+            10.0,
+            0.6,
+            &empty,
+            &empty,
+            None,
+            None,
+        )
+        .unwrap();
 
         let estimates = list_estimates(&conn).unwrap();
         assert_eq!(estimates.len(), 2);

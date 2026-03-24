@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "FreelanceInvoice",
   "version": "0.1.0",
-  "identifier": "com.freelanceinvoice.app",
+  "identifier": "com.freelanceinvoice.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' asset: customprotocol: data: blob:; img-src 'self' asset: data: blob: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' asset: data:; connect-src 'self' ipc: http://ipc.localhost; frame-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'"
     },
     "trayIcon": {
       "iconPath": "icons/32x32.png",

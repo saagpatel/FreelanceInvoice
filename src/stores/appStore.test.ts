@@ -18,6 +18,8 @@ describe("appStore", () => {
       defaultHourlyRate: 100,
       claudeApiKey: "",
       stripeApiKey: "",
+      stripeSuccessUrl: "",
+      stripeCancelUrl: "",
       theme: "system",
       loading: true,
     });
@@ -39,6 +41,8 @@ describe("appStore", () => {
       { key: "business_name", value: "Acme Corp" },
       { key: "business_email", value: "hi@acme.com" },
       { key: "default_hourly_rate", value: "150" },
+      { key: "stripe_success_url", value: "https://app.example/success" },
+      { key: "stripe_cancel_url", value: "https://app.example/cancel" },
       { key: "theme", value: "dark" },
     ]);
 
@@ -49,6 +53,8 @@ describe("appStore", () => {
     expect(state.businessName).toBe("Acme Corp");
     expect(state.businessEmail).toBe("hi@acme.com");
     expect(state.defaultHourlyRate).toBe(150);
+    expect(state.stripeSuccessUrl).toBe("https://app.example/success");
+    expect(state.stripeCancelUrl).toBe("https://app.example/cancel");
     expect(state.theme).toBe("dark");
     expect(state.loading).toBe(false);
   });
@@ -95,7 +101,7 @@ describe("appStore", () => {
 
     expect(commands.setSetting).toHaveBeenCalledWith(
       "business_name",
-      "New Name"
+      "New Name",
     );
     expect(useAppStore.getState().businessName).toBe("New Name");
   });

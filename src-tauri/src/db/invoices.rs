@@ -1,9 +1,13 @@
-use chrono::Utc;
+use chrono::{DateTime, NaiveDate, Utc};
 use rusqlite::{params, Connection};
+use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::error::{AppError, AppResult};
-use crate::models::{Invoice, InvoiceLineItem, InvoiceStatus};
+use crate::models::{
+    CreateInvoiceDraftAtomicInput, DraftInvoiceLineItemInput, Invoice, InvoiceLineItem,
+    InvoiceStatus,
+};
 
 fn row_to_invoice(row: &rusqlite::Row) -> rusqlite::Result<Invoice> {
     let status_str: String = row.get("status")?;
@@ -48,6 +52,8 @@ pub fn create_invoice(
 ) -> AppResult<Invoice> {
     let id = Uuid::new_v4().to_string();
     let invoice_number = generate_invoice_number(conn)?;
+    let issue_date = normalize_date_input(issue_date)?;
+    let due_date = normalize_date_input(due_date)?;
 
     conn.execute(
         "INSERT INTO invoices (id, invoice_number, client_id, status, issue_date, due_date, notes, tax_rate, subtotal, tax_amount, total)
@@ -56,6 +62,144 @@ pub fn create_invoice(
     )?;
 
     get_invoice(conn, &id)
+}
+
+pub fn create_invoice_draft_atomic(
+    conn: &Connection,
+    input: CreateInvoiceDraftAtomicInput,
+) -> AppResult<Invoice> {
+    if input.line_items.is_empty() {
+        return Err(AppError::Validation(
+            "Invoice draft requires at least one line item".to_string(),
+        ));
+    }
+
+    let invoice_id = Uuid::new_v4().to_string();
+    let invoice_number = generate_invoice_number(conn)?;
+    let mut subtotal = 0.0_f64;
+    let tax_rate = input.tax_rate.unwrap_or(0.0);
+    let mut source_entry_ids = HashSet::new();
+    let issue_date = normalize_date_input(&input.issue_date)?;
+    let due_date = normalize_date_input(&input.due_date)?;
+
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
+        "INSERT INTO invoices (id, invoice_number, client_id, status, issue_date, due_date, notes, tax_rate, subtotal, tax_amount, total)
+         VALUES (?1, ?2, ?3, 'draft', ?4, ?5, ?6, ?7, 0, 0, 0)",
+        params![
+            invoice_id,
+            invoice_number,
+            &input.client_id,
+            issue_date,
+            due_date,
+            input.notes,
+            input.tax_rate
+        ],
+    )?;
+
+    for (index, item) in input.line_items.iter().enumerate() {
+        validate_draft_line_item(item, index)?;
+        let amount = item.quantity * item.unit_price;
+        subtotal += amount;
+        tx.execute(
+            "INSERT INTO invoice_line_items (id, invoice_id, description, quantity, unit_price, amount, sort_order)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                Uuid::new_v4().to_string(),
+                invoice_id,
+                item.description,
+                item.quantity,
+                item.unit_price,
+                amount,
+                item.sort_order
+            ],
+        )?;
+
+        for source_id in &item.source_time_entry_ids {
+            if !source_id.trim().is_empty() {
+                source_entry_ids.insert(source_id.clone());
+            }
+        }
+    }
+
+    for entry_id in source_entry_ids {
+        let valid_entry: Option<String> = tx
+            .query_row(
+                "SELECT te.id
+                 FROM time_entries te
+                 JOIN projects p ON p.id = te.project_id
+                 WHERE te.id = ?1
+                   AND te.invoice_id IS NULL
+                   AND te.is_billable = 1
+                   AND p.client_id = ?2",
+                params![entry_id, &input.client_id],
+                |row| row.get(0),
+            )
+            .ok();
+
+        if valid_entry.is_none() {
+            return Err(AppError::Validation(
+                "One or more source time entries are invalid, already invoiced, or from another client".to_string(),
+            ));
+        }
+
+        tx.execute(
+            "UPDATE time_entries SET invoice_id = ?1 WHERE id = ?2",
+            params![invoice_id, entry_id],
+        )?;
+    }
+
+    let tax_amount = subtotal * (tax_rate / 100.0);
+    let total = subtotal + tax_amount;
+    tx.execute(
+        "UPDATE invoices
+         SET subtotal = ?1, tax_amount = ?2, total = ?3, updated_at = ?4
+         WHERE id = ?5",
+        params![
+            subtotal,
+            tax_amount,
+            total,
+            Utc::now().to_rfc3339(),
+            invoice_id
+        ],
+    )?;
+
+    tx.commit()?;
+    get_invoice(conn, &invoice_id)
+}
+
+fn normalize_date_input(input: &str) -> AppResult<String> {
+    if let Ok(dt) = DateTime::parse_from_rfc3339(input) {
+        return Ok(dt.with_timezone(&Utc).to_rfc3339());
+    }
+    if let Ok(date) = NaiveDate::parse_from_str(input, "%Y-%m-%d") {
+        return Ok(format!("{date}T00:00:00Z"));
+    }
+    Err(AppError::Validation(format!(
+        "Invalid date format: {input}. Use YYYY-MM-DD or RFC3339"
+    )))
+}
+
+fn validate_draft_line_item(item: &DraftInvoiceLineItemInput, index: usize) -> AppResult<()> {
+    if item.description.trim().is_empty() {
+        return Err(AppError::Validation(format!(
+            "Line item {} requires a description",
+            index + 1
+        )));
+    }
+    if item.quantity <= 0.0 {
+        return Err(AppError::Validation(format!(
+            "Line item {} must have quantity greater than zero",
+            index + 1
+        )));
+    }
+    if item.unit_price < 0.0 {
+        return Err(AppError::Validation(format!(
+            "Line item {} cannot have a negative unit price",
+            index + 1
+        )));
+    }
+    Ok(())
 }
 
 pub fn get_invoice(conn: &Connection, id: &str) -> AppResult<Invoice> {
@@ -125,6 +269,33 @@ pub fn update_invoice_totals(conn: &Connection, invoice_id: &str) -> AppResult<I
     get_invoice(conn, invoice_id)
 }
 
+pub fn set_payment_link(
+    conn: &Connection,
+    invoice_id: &str,
+    payment_link: Option<&str>,
+) -> AppResult<Invoice> {
+    if let Some(link) = payment_link {
+        let parsed = reqwest::Url::parse(link)
+            .map_err(|_| AppError::Validation("Payment link must be a valid URL".to_string()))?;
+        if parsed.scheme() != "https" && parsed.scheme() != "http" {
+            return Err(AppError::Validation(
+                "Payment link must use http or https".to_string(),
+            ));
+        }
+    }
+
+    let affected = conn.execute(
+        "UPDATE invoices SET payment_link = ?1, updated_at = ?2 WHERE id = ?3",
+        params![payment_link, Utc::now().to_rfc3339(), invoice_id],
+    )?;
+    if affected == 0 {
+        return Err(AppError::NotFound(format!(
+            "Invoice not found: {invoice_id}"
+        )));
+    }
+    get_invoice(conn, invoice_id)
+}
+
 // Line items
 pub fn add_line_item(
     conn: &Connection,
@@ -157,8 +328,8 @@ pub fn add_line_item(
 }
 
 pub fn get_line_items(conn: &Connection, invoice_id: &str) -> AppResult<Vec<InvoiceLineItem>> {
-    let mut stmt = conn
-        .prepare("SELECT * FROM invoice_line_items WHERE invoice_id = ?1 ORDER BY sort_order")?;
+    let mut stmt =
+        conn.prepare("SELECT * FROM invoice_line_items WHERE invoice_id = ?1 ORDER BY sort_order")?;
     let items = stmt
         .query_map(params![invoice_id], |row| {
             Ok(InvoiceLineItem {
@@ -180,7 +351,8 @@ mod tests {
     use super::*;
     use crate::db::clients::create_client;
     use crate::db::init_db_in_memory;
-    use crate::models::CreateClient;
+    use crate::db::projects::create_project;
+    use crate::models::{CreateClient, CreateProject};
 
     fn setup() -> (Connection, String) {
         let conn = init_db_in_memory().expect("Failed to init test DB");
@@ -198,6 +370,23 @@ mod tests {
         )
         .unwrap();
         (conn, client.id)
+    }
+
+    fn setup_with_project() -> (Connection, String, String) {
+        let (conn, client_id) = setup();
+        let project = create_project(
+            &conn,
+            CreateProject {
+                client_id: client_id.clone(),
+                name: "Retainer".to_string(),
+                description: None,
+                status: None,
+                hourly_rate: Some(150.0),
+                budget_hours: None,
+            },
+        )
+        .unwrap();
+        (conn, client_id, project.id)
     }
 
     #[test]
@@ -256,4 +445,99 @@ mod tests {
         assert_eq!(paid.status, InvoiceStatus::Paid);
     }
 
+    #[test]
+    fn test_create_atomic_invoice_links_time_entries() {
+        let (conn, client_id, project_id) = setup_with_project();
+        conn.execute(
+            "INSERT INTO time_entries (id, project_id, description, start_time, end_time, duration_secs, is_billable, is_manual)
+             VALUES ('te-1', ?1, 'Feature work', datetime('now', '-2 hours'), datetime('now', '-1 hours'), 3600, 1, 0)",
+            params![project_id],
+        )
+        .unwrap();
+
+        let invoice = create_invoice_draft_atomic(
+            &conn,
+            CreateInvoiceDraftAtomicInput {
+                client_id,
+                issue_date: "2025-01-01T00:00:00Z".to_string(),
+                due_date: "2025-01-31T00:00:00Z".to_string(),
+                notes: Some("Atomic save".to_string()),
+                tax_rate: Some(10.0),
+                line_items: vec![DraftInvoiceLineItemInput {
+                    description: "Feature work".to_string(),
+                    quantity: 1.0,
+                    unit_price: 150.0,
+                    sort_order: 0,
+                    source_time_entry_ids: vec!["te-1".to_string()],
+                }],
+            },
+        )
+        .unwrap();
+
+        assert_eq!(invoice.subtotal, 150.0);
+        assert_eq!(invoice.tax_amount, 15.0);
+        assert_eq!(invoice.total, 165.0);
+
+        let linked_invoice_id: Option<String> = conn
+            .query_row(
+                "SELECT invoice_id FROM time_entries WHERE id = 'te-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(linked_invoice_id, Some(invoice.id));
+    }
+
+    #[test]
+    fn test_atomic_invoice_rolls_back_on_invalid_time_entry() {
+        let (conn, client_id, _project_id) = setup_with_project();
+
+        let result = create_invoice_draft_atomic(
+            &conn,
+            CreateInvoiceDraftAtomicInput {
+                client_id,
+                issue_date: "2025-01-01T00:00:00Z".to_string(),
+                due_date: "2025-01-31T00:00:00Z".to_string(),
+                notes: None,
+                tax_rate: None,
+                line_items: vec![DraftInvoiceLineItemInput {
+                    description: "Invalid source".to_string(),
+                    quantity: 1.0,
+                    unit_price: 100.0,
+                    sort_order: 0,
+                    source_time_entry_ids: vec!["missing-entry".to_string()],
+                }],
+            },
+        );
+        assert!(result.is_err());
+
+        let invoice_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM invoices", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(invoice_count, 0);
+    }
+
+    #[test]
+    fn test_set_and_clear_payment_link() {
+        let (conn, client_id) = setup();
+        let invoice = create_invoice(
+            &conn,
+            &client_id,
+            "2025-01-01T00:00:00Z",
+            "2025-01-31T00:00:00Z",
+            None,
+            None,
+        )
+        .unwrap();
+
+        let with_link =
+            set_payment_link(&conn, &invoice.id, Some("https://pay.example/link")).unwrap();
+        assert_eq!(
+            with_link.payment_link,
+            Some("https://pay.example/link".to_string())
+        );
+
+        let cleared = set_payment_link(&conn, &invoice.id, None).unwrap();
+        assert_eq!(cleared.payment_link, None);
+    }
 }

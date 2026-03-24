@@ -104,6 +104,23 @@ export interface InvoiceLineItem {
   sort_order: number;
 }
 
+export interface DraftInvoiceLineItemInput {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  sort_order: number;
+  source_time_entry_ids?: string[];
+}
+
+export interface CreateInvoiceDraftAtomicInput {
+  client_id: string;
+  issue_date: string;
+  due_date: string;
+  notes?: string | null;
+  tax_rate?: number | null;
+  line_items: DraftInvoiceLineItemInput[];
+}
+
 export interface Estimate {
   id: string;
   project_description: string;
@@ -126,6 +143,21 @@ export interface TimerState {
   description: string | null;
   elapsed_secs: number;
   start_time: string | null;
+}
+
+export interface CreateManualTimeEntryInput {
+  project_id: string;
+  description?: string | null;
+  start_time: string;
+  end_time: string;
+  is_billable?: boolean;
+}
+
+export interface UpdateManualTimeEntryInput {
+  description?: string | null;
+  start_time?: string;
+  end_time?: string;
+  is_billable?: boolean;
 }
 
 export interface ActiveTimer {

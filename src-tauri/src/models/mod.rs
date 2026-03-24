@@ -29,12 +29,12 @@ pub struct CreateClient {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateClient {
     pub name: Option<String>,
-    pub email: Option<String>,
-    pub company: Option<String>,
-    pub address: Option<String>,
-    pub phone: Option<String>,
-    pub notes: Option<String>,
-    pub hourly_rate: Option<f64>,
+    pub email: Option<Option<String>>,
+    pub company: Option<Option<String>>,
+    pub address: Option<Option<String>>,
+    pub phone: Option<Option<String>>,
+    pub notes: Option<Option<String>>,
+    pub hourly_rate: Option<Option<f64>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -93,10 +93,10 @@ pub struct CreateProject {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateProject {
     pub name: Option<String>,
-    pub description: Option<String>,
+    pub description: Option<Option<String>>,
     pub status: Option<ProjectStatus>,
-    pub hourly_rate: Option<f64>,
-    pub budget_hours: Option<f64>,
+    pub hourly_rate: Option<Option<f64>>,
+    pub budget_hours: Option<Option<f64>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,6 +176,26 @@ pub struct InvoiceLineItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DraftInvoiceLineItemInput {
+    pub description: String,
+    pub quantity: f64,
+    pub unit_price: f64,
+    pub sort_order: i32,
+    #[serde(default)]
+    pub source_time_entry_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateInvoiceDraftAtomicInput {
+    pub client_id: String,
+    pub issue_date: String,
+    pub due_date: String,
+    pub notes: Option<String>,
+    pub tax_rate: Option<f64>,
+    pub line_items: Vec<DraftInvoiceLineItemInput>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Estimate {
     pub id: String,
     pub project_description: String,
@@ -209,6 +229,28 @@ pub struct TimerState {
     pub description: Option<String>,
     pub elapsed_secs: i64,
     pub start_time: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateManualTimeEntryInput {
+    pub project_id: String,
+    pub description: Option<String>,
+    pub start_time: DateTime<Utc>,
+    pub end_time: DateTime<Utc>,
+    #[serde(default = "default_billable")]
+    pub is_billable: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateManualTimeEntryInput {
+    pub description: Option<Option<String>>,
+    pub start_time: Option<DateTime<Utc>>,
+    pub end_time: Option<DateTime<Utc>>,
+    pub is_billable: Option<bool>,
+}
+
+fn default_billable() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
