@@ -27,4 +27,3 @@ const targets = mode === "heavy" ? HEAVY_PATHS : ALL_LOCAL_PATHS;
 for (const target of targets) {
   removePath(target);
 }
-

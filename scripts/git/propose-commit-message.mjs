@@ -19,8 +19,12 @@ const lower = staged.map((f) => f.toLowerCase());
 const hasDocs = lower.some((f) => f.endsWith(".md") || f.includes("docs/"));
 const hasTests = lower.some((f) => f.includes("test") || f.includes("spec"));
 const hasCi = lower.some((f) => f.startsWith(".github/workflows/"));
-const hasPerf = lower.some((f) => f.includes("/perf/") || f.includes("lighthouserc"));
-const hasDeps = lower.some((f) => f.endsWith("package.json") || f.includes("lock"));
+const hasPerf = lower.some(
+  (f) => f.includes("/perf/") || f.includes("lighthouserc"),
+);
+const hasDeps = lower.some(
+  (f) => f.endsWith("package.json") || f.includes("lock"),
+);
 
 let type = "feat";
 if (hasCi) type = "ci";

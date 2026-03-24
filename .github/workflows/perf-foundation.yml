@@ -20,7 +20,7 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build || pnpm build:ui
+      - run: pnpm build
       - run: pnpm perf:bundle
 
   perf-build:
@@ -53,7 +53,7 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build || pnpm build:ui
+      - run: pnpm build
       - run: pnpm perf:lhci || true
 
   perf-assets:

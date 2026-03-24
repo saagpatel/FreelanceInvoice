@@ -11,7 +11,9 @@ if (commandArgs.length === 0) {
   process.exit(1);
 }
 
-const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "freelanceinvoice-lean-"));
+const tempRoot = fs.mkdtempSync(
+  path.join(os.tmpdir(), "freelanceinvoice-lean-"),
+);
 const viteCacheDir = path.join(tempRoot, "vite-cache");
 const cargoTargetDir = path.join(tempRoot, "cargo-target");
 
@@ -35,7 +37,9 @@ function safeRm(targetPath) {
 
 function cleanupLingeringVite() {
   const isTauriDev =
-    commandArgs.length >= 2 && commandArgs[0] === "tauri" && commandArgs[1] === "dev";
+    commandArgs.length >= 2 &&
+    commandArgs[0] === "tauri" &&
+    commandArgs[1] === "dev";
   if (!isTauriDev) {
     return;
   }

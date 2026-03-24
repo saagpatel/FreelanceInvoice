@@ -4,10 +4,13 @@ FreelanceInvoice is a Tauri desktop app for freelancers to track work, manage cl
 
 ## Features
 
-- Clients, projects, and time tracking
-- Invoice builder + invoice history
+- Clients, projects, and timer-based time tracking
+- Invoice builder, sandboxed HTML invoice preview, and invoice history
+- Dashboard analytics for revenue and hours
 - AI project estimation (requires your own Claude API key)
-- Stripe payment link generation (requires your own Stripe API key; premium-tier feature in-app)
+- Stripe payment link generation (premium-tier)
+- Manual time-entry workflow (create/edit)
+- Downloadable PDF invoice export
 
 ## Tech Stack
 
@@ -72,6 +75,7 @@ pnpm tauri build
 - `pnpm dev:lean` / `pnpm tauri:dev:lean` redirect Vite and Cargo build caches to temporary OS folders and remove heavy build artifacts when you stop the app.
 
 Tradeoff:
+
 - Lean mode uses less persistent disk space.
 - Lean mode usually has slower startup after each restart because caches are not reused.
 
@@ -84,6 +88,7 @@ pnpm clean:heavy
 ```
 
 This removes:
+
 - `dist`
 - `node_modules/.vite`
 - `src-tauri/target`
@@ -95,6 +100,7 @@ pnpm clean:all-local
 ```
 
 This removes everything above plus:
+
 - `node_modules`
 
 After `pnpm clean:all-local`, run `pnpm install` before starting dev again.
@@ -104,9 +110,17 @@ After `pnpm clean:all-local`, run `pnpm install` before starting dev again.
 You can set API keys in the app under **Settings**:
 
 - Claude API key: used for AI project estimation
-- Stripe API key: used for generating Stripe payment links
+- Stripe API key: used for payment-link generation (premium-tier)
 
-Security note: do not hardcode keys in code or commit them to the repo. Keep keys in local app settings only.
+Security note: do not hardcode keys in code or commit them to the repo. Sensitive keys are stored through OS secure storage when saved in the app.
+
+## Feature Maturity
+
+Production scope and release claims are managed in:
+
+- `docs/production-scope-contract.md`
+- `docs/feature-maturity-policy.md`
+- `docs/operator-runbook.md`
 
 ## Recommended IDE Setup
 

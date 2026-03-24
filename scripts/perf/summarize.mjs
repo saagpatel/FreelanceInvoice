@@ -7,7 +7,11 @@ const files = {
   api: ".perf-results/api-summary.json",
 };
 
-const summary = { capturedAt: new Date().toISOString(), metrics: {}, status: "pass" };
+const summary = {
+  capturedAt: new Date().toISOString(),
+  metrics: {},
+  status: "pass",
+};
 for (const [key, file] of Object.entries(files)) {
   if (existsSync(file)) {
     summary.metrics[key] = JSON.parse(readFileSync(file, "utf8"));
@@ -17,5 +21,8 @@ for (const [key, file] of Object.entries(files)) {
 }
 
 mkdirSync(".perf-results", { recursive: true });
-writeFileSync(".perf-results/summary.json", `${JSON.stringify(summary, null, 2)}\n`);
+writeFileSync(
+  ".perf-results/summary.json",
+  `${JSON.stringify(summary, null, 2)}\n`,
+);
 console.log("wrote .perf-results/summary.json");

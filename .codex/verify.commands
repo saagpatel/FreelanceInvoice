@@ -1,5 +1,11 @@
 # codex-os-managed
 pnpm git:guard:all
+pnpm typecheck
+pnpm lint
+pnpm test:unit
+pnpm test:integration
+pnpm test:e2e
 pnpm perf:bundle
 pnpm perf:build
 pnpm perf:assets
+pnpm perf:memory

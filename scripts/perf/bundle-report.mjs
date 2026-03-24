@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 
 function nextBundle() {
@@ -44,11 +51,16 @@ function viteBundle() {
 }
 
 const run = async () => {
-  const report = nextBundle() || (await viteBundle()) || { source: "none", totalBytes: 0 };
+  const report = nextBundle() ||
+    (await viteBundle()) || { source: "none", totalBytes: 0 };
   mkdirSync(".perf-results", { recursive: true });
   writeFileSync(
     ".perf-results/bundle.json",
-    JSON.stringify({ ...report, capturedAt: new Date().toISOString() }, null, 2),
+    JSON.stringify(
+      { ...report, capturedAt: new Date().toISOString() },
+      null,
+      2,
+    ),
   );
 };
 

@@ -21,7 +21,7 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build || pnpm build:ui
+      - run: pnpm build
       - run: pnpm perf:bundle
       - run: node scripts/perf/compare-metric.mjs .perf-baselines/bundle.json .perf-results/bundle.json totalBytes 0.08
 
@@ -84,8 +84,8 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build || pnpm build:ui
-      - run: pnpm perf:lhci:prod || pnpm perf:lhci
+      - run: pnpm build
+      - run: pnpm perf:lhci:prod
 
   perf-api:
     if: ${{ vars.PERF_PROFILE == 'production' && vars.PERF_BASE_URL != '' }}
