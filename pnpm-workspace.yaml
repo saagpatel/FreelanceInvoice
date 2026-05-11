@@ -1,4 +1,4 @@
-approveBuildsAutomatically: true
+allowBuilds:
+  esbuild: true
 
-ignoredBuiltDependencies:
-  - esbuild
+approveBuildsAutomatically: true
