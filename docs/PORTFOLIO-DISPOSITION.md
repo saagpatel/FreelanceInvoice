@@ -1,150 +1,138 @@
 # FreeLanceInvoice — Portfolio Disposition
 
-**Status:** Release Frozen **with unmerged code work**. Substantive
-post-closeout commits (Stripe payment links, PDF invoice workflows,
-dashboard hardening, time-tracking tightening) live on
-`codex/feat/release-candidate-closeout` and have not landed on
-`main`. Resolving that gap is a prerequisite for any signing /
-shipping work.
+**Status:** Release Frozen — unsigned desktop pipeline complete (PR #3
+merged to `origin/main` 2026-03-24), awaiting operator-only Apple
+signing + notarization. Fifth member of the signing-frozen cluster.
 
-> **Audience:** anyone resuming FreeLanceInvoice work or wondering
-> why the `main` branch is missing features the release PR claimed
-> to deliver.
+> **Audience:** anyone resuming FreeLanceInvoice work, scoping a
+> signing batch, or wondering why the prior version of this file
+> claimed code was stranded.
 
 ---
 
-## Why this file exists
+## Correction notice
 
-Two reasons:
+A previous version of this disposition doc (in PR #21) claimed that
+substantive Stripe + PDF + dashboard code was stranded on the
+`codex/feat/release-candidate-closeout` branch and not on `main`.
+**That claim was wrong.** It was based on reading the wrong remote:
+the analysis looked at `legacy-origin/main` (the frozen `saagar210`
+GitHub account) and conflated it with `origin/main`
+(`saagpatel/FreelanceInvoice`).
 
-1. The portfolio operating system has been surfacing FreeLanceInvoice
-   as overdue review. The repo deserves a Release Frozen disposition
-   (same family as DesktopPEt / ContentEngine / AIGCCore / Relay).
-2. **But there's a real problem on top of that posture**: substantive
-   code work on `codex/feat/release-candidate-closeout` is not on
-   `main`, despite PR #3 ("feat(app): finalize release candidate
-   closeout") being marked merged on 2026-03-24.
+The reality:
 
-The disposition is not just "wait for signing" — it's "first
-reconcile the missing code, then wait for signing."
+- PR #3 merged into `origin/main` 2026-03-24 (merge commit
+  `381b73b`).
+- `src-tauri/src/services/stripe.rs`, `secure_store.rs`,
+  `commands/pdf.rs`, and `commands/invoices.rs` payment-link
+  functions all exist on `origin/main` and have since the merge.
+- The 700 lines were never stranded.
 
----
-
-## The unmerged work
-
-PR #3 was reported merged 2026-03-24 with merge commit `381b73b`.
-That merge commit does not exist on `origin/main` today. The most
-likely explanation is that `main` was reset or force-pushed after
-the merge (possibly during the `saagar210` → `saagpatel` GitHub
-account migration), orphaning the merge commit and stranding the
-feature work on the codex branch.
-
-Commits on the branch but **not on `main`**:
-
-| Commit                    | Subject                                              | Why it matters                                                                                                                                                               |
-| ------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `33d6298`                 | feat(app): tighten dashboard and time-tracking flows | Hardens dashboard, time-entry editing, AI estimate behavior (~8 files)                                                                                                       |
-| `ee9209d`                 | feat(invoice): add payment-link and pdf workflows    | Stripe payment links + PDF invoice download + secure invoice settings (~15 files, 700+ lines of code, includes new `src-tauri/src/services/stripe.rs` and `secure_store.rs`) |
-| `974af35`                 | chore(repo): add release candidate quality gates     | Codifies verify contract for unit/integration/e2e/perf                                                                                                                       |
-| 5 codex bootstrap commits | various                                              | Lower priority; many already on `main` via separate paths                                                                                                                    |
-
-The Stripe integration is the highest-value missing piece. It is
-not test-coverage polish — it's a feature the release-candidate
-narrative claims to have shipped, but main does not actually have.
+This file replaces the prior disposition. **No code recovery PR is
+needed.**
 
 ---
 
-## Recommended sequence
+## Why the earlier mistake happened (worth remembering)
 
-Do **not** treat this row as simple Release Frozen. The right
-sequence:
+The local clone of this repo had `main` tracking `legacy-origin/main`
+(the saagar210 account's `main`), which had been frozen with a
+different history that ended before the closeout merge. When the
+analysis ran `git log origin/main`, the local resolver returned
+`legacy-origin/main` because of the tracking config. Without the
+trailing `origin/` always-explicit prefix in commands, the wrong
+branch was inspected.
 
-1. **Recover the code first**: open a fresh PR from
-   `codex/feat/release-candidate-closeout` (or a cleaner cherry-pick
-   of the three substantive commits above) to `main`. Verify the
-   tests pass in CI. Merge.
-2. Run `pnpm verify` / `cargo test` / the smoke walkthrough
-   against the post-merge `main` to confirm the resurrected work
-   actually still builds against current toolchain.
-3. **Only then** treat this row as Release Frozen, with the same
-   Apple signing unblock as the rest of the cluster.
+**Lesson for any future disposition work in this repo or any other
+repo with a `legacy-origin` remote**: always use the literal
+`origin/<branch>` form in `git log`, `git merge-base`, and
+`git diff` commands. Never trust local tracking config when the
+disposition decision hinges on which remote is being read.
 
-Doing signing first while the code on `main` is missing features
-would ship a release that's a regression against what was nominally
-finished six weeks ago.
+This is the same `legacy-origin` migration risk noted in the
+PersonalKBDrafter, Relay, and DeepTank disposition docs — but
+FreeLanceInvoice is the first case where the misread actually
+produced a wrong claim. Worth a one-time sweep of `legacy-origin`
+repos to check whether any other dispositions written in this
+session have the same bug.
 
 ---
 
 ## Current state in one paragraph
 
-FreeLanceInvoice is a Tauri 2 desktop app for freelancers to track
-work, manage clients and projects, generate invoices, and produce
+FreeLanceInvoice is a Tauri 2 desktop app for freelancers: client/
+project management, timer-based time tracking, invoice builder with
+sandboxed HTML preview and history, premium-tier Stripe payment
+links, PDF invoice download, secure invoice settings, and
 AI-assisted project estimates. Operator runbook, go/no-go doc, and
-production scope contract are captured under `docs/`. The
-release-candidate work is **mostly merged** to main, but the Stripe
-payment-link integration and dashboard hardening pass have been
-stranded on `codex/feat/release-candidate-closeout` since the
-account migration.
+production scope contract are captured under `docs/`. Quality gates
+defined in `.codex/verify.commands`. The product surface for v0 is
+shipped on `main` and tested.
+
+The only gates between "tag a release" and "publish a signed installer"
+are Apple Developer ID credentials and the canonical signing /
+notarization workflow.
 
 ---
 
 ## Portfolio operating system instructions
 
-| Aspect                        | Posture                                                                                                                                                                             |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Portfolio status              | **`Active`** until unmerged code is reconciled — not `Release Frozen` yet                                                                                                           |
-| Critical follow-up            | Recover the Stripe + PDF + dashboard commits from `codex/feat/release-candidate-closeout` to `main`                                                                                 |
-| Review cadence                | Resume normal cadence — this row needs decision-time, not waiting-time                                                                                                              |
-| After code recovery           | Transition to `Release Frozen` + join the signing cluster                                                                                                                           |
-| Co-batch with signing cluster | **No, not yet.** Recovering the missing code is a prerequisite. Once that PR merges and the branch is reconciled, then co-batch with DesktopPEt / ContentEngine / AIGCCore / Relay. |
+| Aspect               | Posture                                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Portfolio status     | `Release Frozen`                                                                                                                                                                |
+| Closeout packet      | **Resolved** — PR #3 merged 2026-03-24                                                                                                                                          |
+| Review cadence       | Suspend overdue counting                                                                                                                                                        |
+| Resurface conditions | (a) Apple signing credentials wired in CI, (b) operator opens a v0.2 scope packet, or (c) operator triggers a dependency-refresh sprint for the 5 open dependabot PRs (#16–#20) |
+| Co-batch with        | Signing cluster: DesktopPEt, ContentEngine, AIGCCore, Relay, FreeLanceInvoice. **Now 5 repos** — even more reason to batch through signing in one session.                      |
 
 ---
 
-## Why "Active" instead of "Release Frozen" right now
+## Unblock trigger (operator)
 
-The signing-cluster repos all have one common property: **what's on
-`main` is what would ship if signing were available**. That is not
-true here. Shipping what `main` currently has would produce a
-release missing the Stripe integration that was nominally the
-flagship feature of the closeout. That's a regression, not a
-release.
+When ready to ship:
 
-After the code is recovered onto `main`, this row joins the cluster
-and becomes Release Frozen on the same axis.
+1. Add Apple Developer ID + notarization credentials per the
+   standard signing-cluster procedure.
+2. Bump version across `package.json`, `src-tauri/tauri.conf.json`,
+   `src-tauri/Cargo.toml`. Tag `v0.x.y`.
+3. Verify the auto-generated draft release contains signed installers
+   and a valid `SHA256SUMS.txt`.
+4. Publish.
+5. Triage open dependabot PRs (#16–#20) opportunistically — none are
+   blocking.
+
+Estimated operator time once credentials are in hand: ~2 hours
+including a fresh notarization round-trip on macOS.
 
 ---
 
-## Unblock procedure (operator + Claude Code)
+## Reactivation procedure (for the next code session)
 
-Step 1 — Code recovery (Claude Code can do this in a future session):
+When portfolio operating system flips this row to `Active`:
 
-1. Branch from current `main`.
-2. Cherry-pick `974af35`, `ee9209d`, `33d6298` in order.
-3. Resolve any conflicts (likely none against current main since
-   main is mostly chore commits since the orphaning).
-4. Open a PR titled "feat(app): recover release-candidate work stranded
-   from PR #3".
-5. Verify CI green, merge.
-6. Delete the long-stale `codex/feat/release-candidate-closeout`
-   branch.
-
-Step 2 — Then standard Release Frozen unblock (operator):
-
-7. Apple signing + notarization credentials.
-8. Re-run the operator runbook smoke walkthrough.
-9. Cut a real GitHub release.
+1. **Fix local clone tracking first.** Check `git branch -vv` — if
+   `main` tracks `legacy-origin/main`, retarget to `origin/main`
+   with `git branch --set-upstream-to=origin/main main`. This was
+   the underlying cause of the wrong disposition claim.
+2. Delete stale `codex/*` branches (most are merged-history
+   artifacts).
+3. Re-run `pnpm install && pnpm verify` to confirm the toolchain
+   still works after the freeze.
+4. Re-run the operator runbook smoke walkthrough before adding any
+   new scope.
+5. Only then proceed to signing.
 
 ---
 
 ## Last known reference
 
-| Field                             | Value                                                                                                                                   |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Last commit on `main`             | `9a7ff07` refactor(core): prune dead code and harden bundle budgets                                                                     |
-| Last commit on stranded branch    | `33d6298` feat(app): tighten dashboard and time-tracking flows                                                                          |
-| Stranded commits worth recovering | `974af35`, `ee9209d`, `33d6298`                                                                                                         |
-| Stranded commit count             | 8 (3 substantive, 5 chore/bootstrap)                                                                                                    |
-| Build verification status         | green on the stranded branch; main has not been verified post-stranding                                                                 |
-| Open dependabot PRs               | #16 – #20, oldest from 2026-03-29                                                                                                       |
-| Blocker                           | (1) code recovery, (2) Apple signing                                                                                                    |
-| Migration note                    | `legacy-origin` points at frozen `saagar210/FreelanceInvoice`; this is likely where the original merge commit lives — do not push there |
+| Field                                   | Value                                                                                                                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Last meaningful commit on `origin/main` | `4d9a1f0` docs: portfolio disposition + pnpm workspace fix (#21) — note this file replaces what that PR shipped                                                                      |
+| Closeout merge                          | `381b73b` Merge pull request #3 (present on `origin/main`)                                                                                                                           |
+| Stripe/PDF/dashboard code               | On `origin/main` since 2026-03-24                                                                                                                                                    |
+| Build verification status               | green                                                                                                                                                                                |
+| Open dependabot PRs                     | #16 – #20, oldest from 2026-03-29                                                                                                                                                    |
+| Blocker                                 | Apple signing + notarization (operator-only)                                                                                                                                         |
+| Migration note                          | `legacy-origin` points at frozen `saagar210/FreelanceInvoice`; **do not push there**. Local clones may track legacy-origin/main by accident — verify before relying on branch state. |
