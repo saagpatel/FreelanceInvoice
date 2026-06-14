@@ -54,7 +54,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@commitlint/cz-commitlint": "^20.5.0",
+    "@commitlint/cz-commitlint": "^21.0.2",
     "@lhci/cli": "^0.15.1",
     "@tailwindcss/vite": "^4.3.0",
     "@tauri-apps/cli": "^2.11.2",
