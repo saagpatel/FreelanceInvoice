@@ -1,8 +1,7 @@
 use handlebars::Handlebars;
-use printpdf::{BuiltinFont, Mm, PdfDocument};
+use pdf_canvas::{BuiltinFont, Pdf};
 use rusqlite::Connection;
 use serde::Serialize;
-use std::io::BufWriter;
 
 use crate::db::{clients, invoices};
 use crate::error::{AppError, AppResult};
@@ -48,6 +47,10 @@ fn format_date_short(date_str: &str) -> String {
     } else {
         date_str.to_string()
     }
+}
+
+fn mm(value: f32) -> f32 {
+    value * 72.0 / 25.4
 }
 
 pub fn render_invoice_html(
@@ -110,171 +113,213 @@ pub fn export_invoice_pdf_bytes(
     let client = clients::get_client(conn, &invoice.client_id)?;
     let line_items = invoices::get_line_items(conn, invoice_id)?;
 
-    let (doc, page1, layer1) = PdfDocument::new(
-        &format!("Invoice {}", invoice.invoice_number),
-        Mm(210.0),
-        Mm(297.0),
-        "Invoice Layer",
-    );
-    let layer = doc.get_page(page1).get_layer(layer1);
-    let font = doc
-        .add_builtin_font(BuiltinFont::Helvetica)
+    let temp_path = std::env::temp_dir().join(format!(
+        "freelanceinvoice-{}-{}.pdf",
+        invoice.invoice_number,
+        uuid::Uuid::new_v4()
+    ));
+    let temp_path_str = temp_path
+        .to_str()
+        .ok_or_else(|| AppError::Io(std::io::Error::other("invalid PDF temp path")))?;
+
+    let mut doc = Pdf::create(temp_path_str)
         .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?;
-    let bold_font = doc
-        .add_builtin_font(BuiltinFont::HelveticaBold)
-        .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?;
+    doc.set_title(&format!("Invoice {}", invoice.invoice_number));
+    doc.render_page(mm(210.0), mm(297.0), |canvas| {
+        let mut add_text = |text: String, size: f32, x: f32, y: f32, font: BuiltinFont| {
+            canvas.left_text(mm(x), mm(y), font, size, &text)
+        };
 
-    let mut y = 285.0;
-    layer.use_text(business_name.to_string(), 18.0, Mm(15.0), Mm(y), &bold_font);
-    y -= 8.0;
-    if !business_email.trim().is_empty() {
-        layer.use_text(business_email.to_string(), 10.0, Mm(15.0), Mm(y), &font);
-        y -= 6.0;
-    }
-    if !business_address.trim().is_empty() {
-        for line in business_address.lines() {
-            layer.use_text(line.to_string(), 10.0, Mm(15.0), Mm(y), &font);
-            y -= 5.0;
+        let mut y = 285.0;
+        add_text(
+            business_name.to_string(),
+            18.0,
+            15.0,
+            y,
+            BuiltinFont::Helvetica_Bold,
+        )?;
+        y -= 8.0;
+        if !business_email.trim().is_empty() {
+            add_text(
+                business_email.to_string(),
+                10.0,
+                15.0,
+                y,
+                BuiltinFont::Helvetica,
+            )?;
+            y -= 6.0;
         }
-    }
-
-    layer.use_text("INVOICE", 20.0, Mm(145.0), Mm(285.0), &bold_font);
-    layer.use_text(
-        format!("#{}", invoice.invoice_number),
-        11.0,
-        Mm(145.0),
-        Mm(276.0),
-        &font,
-    );
-    layer.use_text(
-        format!(
-            "Issue: {}",
-            format_date_short(&invoice.issue_date.to_rfc3339())
-        ),
-        10.0,
-        Mm(145.0),
-        Mm(268.0),
-        &font,
-    );
-    layer.use_text(
-        format!("Due: {}", format_date_short(&invoice.due_date.to_rfc3339())),
-        10.0,
-        Mm(145.0),
-        Mm(262.0),
-        &font,
-    );
-
-    y = 248.0;
-    layer.use_text("Bill To", 11.0, Mm(15.0), Mm(y), &bold_font);
-    y -= 7.0;
-    layer.use_text(client.name, 10.0, Mm(15.0), Mm(y), &font);
-    y -= 5.0;
-    if let Some(company) = client.company {
-        if !company.trim().is_empty() {
-            layer.use_text(company, 10.0, Mm(15.0), Mm(y), &font);
-            y -= 5.0;
-        }
-    }
-    if let Some(email) = client.email {
-        if !email.trim().is_empty() {
-            layer.use_text(email, 10.0, Mm(15.0), Mm(y), &font);
-            y -= 5.0;
-        }
-    }
-    if let Some(address) = client.address {
-        if !address.trim().is_empty() {
-            for line in address.lines() {
-                layer.use_text(line.to_string(), 10.0, Mm(15.0), Mm(y), &font);
+        if !business_address.trim().is_empty() {
+            for line in business_address.lines() {
+                add_text(line.to_string(), 10.0, 15.0, y, BuiltinFont::Helvetica)?;
                 y -= 5.0;
             }
         }
-    }
 
-    let mut row_y = 205.0;
-    layer.use_text("Description", 10.5, Mm(15.0), Mm(row_y), &bold_font);
-    layer.use_text("Qty", 10.5, Mm(120.0), Mm(row_y), &bold_font);
-    layer.use_text("Rate", 10.5, Mm(145.0), Mm(row_y), &bold_font);
-    layer.use_text("Amount", 10.5, Mm(170.0), Mm(row_y), &bold_font);
-    row_y -= 7.0;
-
-    for line_item in line_items {
-        layer.use_text(line_item.description, 10.0, Mm(15.0), Mm(row_y), &font);
-        layer.use_text(
-            format!("{:.2}", line_item.quantity),
+        add_text(
+            "INVOICE".to_string(),
+            20.0,
+            145.0,
+            285.0,
+            BuiltinFont::Helvetica_Bold,
+        )?;
+        add_text(
+            format!("#{}", invoice.invoice_number),
+            11.0,
+            145.0,
+            276.0,
+            BuiltinFont::Helvetica,
+        )?;
+        add_text(
+            format!(
+                "Issue: {}",
+                format_date_short(&invoice.issue_date.to_rfc3339())
+            ),
             10.0,
-            Mm(120.0),
-            Mm(row_y),
-            &font,
-        );
-        layer.use_text(
-            format_money(line_item.unit_price),
+            145.0,
+            268.0,
+            BuiltinFont::Helvetica,
+        )?;
+        add_text(
+            format!("Due: {}", format_date_short(&invoice.due_date.to_rfc3339())),
             10.0,
-            Mm(145.0),
-            Mm(row_y),
-            &font,
-        );
-        layer.use_text(
-            format_money(line_item.amount),
-            10.0,
-            Mm(170.0),
-            Mm(row_y),
-            &font,
-        );
-        row_y -= 6.0;
-    }
+            145.0,
+            262.0,
+            BuiltinFont::Helvetica,
+        )?;
 
-    let summary_y = 50.0;
-    layer.use_text(
-        format!("Subtotal: ${}", format_money(invoice.subtotal)),
-        11.0,
-        Mm(130.0),
-        Mm(summary_y + 15.0),
-        &font,
-    );
-    layer.use_text(
-        format!("Tax: ${}", format_money(invoice.tax_amount)),
-        11.0,
-        Mm(130.0),
-        Mm(summary_y + 8.0),
-        &font,
-    );
-    layer.use_text(
-        format!("Total: ${}", format_money(invoice.total)),
-        12.5,
-        Mm(130.0),
-        Mm(summary_y),
-        &bold_font,
-    );
-
-    if let Some(notes) = invoice.notes {
-        if !notes.trim().is_empty() {
-            layer.use_text("Notes:", 10.5, Mm(15.0), Mm(38.0), &bold_font);
-            let mut notes_y = 32.0;
-            for line in notes.lines().take(4) {
-                layer.use_text(line.to_string(), 10.0, Mm(15.0), Mm(notes_y), &font);
-                notes_y -= 5.0;
+        y = 248.0;
+        add_text("Bill To".to_string(), 11.0, 15.0, y, BuiltinFont::Helvetica_Bold)?;
+        y -= 7.0;
+        add_text(client.name.clone(), 10.0, 15.0, y, BuiltinFont::Helvetica)?;
+        y -= 5.0;
+        if let Some(company) = &client.company {
+            if !company.trim().is_empty() {
+                add_text(company.to_string(), 10.0, 15.0, y, BuiltinFont::Helvetica)?;
+                y -= 5.0;
             }
         }
-    }
-
-    if let Some(payment_link) = invoice.payment_link {
-        if !payment_link.trim().is_empty() {
-            layer.use_text(
-                format!("Pay online: {}", payment_link),
-                9.0,
-                Mm(15.0),
-                Mm(12.0),
-                &font,
-            );
+        if let Some(email) = &client.email {
+            if !email.trim().is_empty() {
+                add_text(email.to_string(), 10.0, 15.0, y, BuiltinFont::Helvetica)?;
+                y -= 5.0;
+            }
         }
-    }
+        if let Some(address) = &client.address {
+            if !address.trim().is_empty() {
+                for line in address.lines() {
+                    add_text(line.to_string(), 10.0, 15.0, y, BuiltinFont::Helvetica)?;
+                    y -= 5.0;
+                }
+            }
+        }
 
-    let mut bytes = Vec::new();
-    {
-        let mut writer = BufWriter::new(&mut bytes);
-        doc.save(&mut writer)
-            .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?;
-    }
+        let mut row_y = 205.0;
+        add_text(
+            "Description".to_string(),
+            10.5,
+            15.0,
+            row_y,
+            BuiltinFont::Helvetica_Bold,
+        )?;
+        add_text("Qty".to_string(), 10.5, 120.0, row_y, BuiltinFont::Helvetica_Bold)?;
+        add_text("Rate".to_string(), 10.5, 145.0, row_y, BuiltinFont::Helvetica_Bold)?;
+        add_text(
+            "Amount".to_string(),
+            10.5,
+            170.0,
+            row_y,
+            BuiltinFont::Helvetica_Bold,
+        )?;
+        row_y -= 7.0;
+
+        for line_item in &line_items {
+            add_text(
+                line_item.description.clone(),
+                10.0,
+                15.0,
+                row_y,
+                BuiltinFont::Helvetica,
+            )?;
+            add_text(
+                format!("{:.2}", line_item.quantity),
+                10.0,
+                120.0,
+                row_y,
+                BuiltinFont::Helvetica,
+            )?;
+            add_text(
+                format_money(line_item.unit_price),
+                10.0,
+                145.0,
+                row_y,
+                BuiltinFont::Helvetica,
+            )?;
+            add_text(
+                format_money(line_item.amount),
+                10.0,
+                170.0,
+                row_y,
+                BuiltinFont::Helvetica,
+            )?;
+            row_y -= 6.0;
+        }
+
+        let summary_y = 50.0;
+        add_text(
+            format!("Subtotal: ${}", format_money(invoice.subtotal)),
+            11.0,
+            130.0,
+            summary_y + 15.0,
+            BuiltinFont::Helvetica,
+        )?;
+        add_text(
+            format!("Tax: ${}", format_money(invoice.tax_amount)),
+            11.0,
+            130.0,
+            summary_y + 8.0,
+            BuiltinFont::Helvetica,
+        )?;
+        add_text(
+            format!("Total: ${}", format_money(invoice.total)),
+            12.5,
+            130.0,
+            summary_y,
+            BuiltinFont::Helvetica_Bold,
+        )?;
+
+        if let Some(notes) = &invoice.notes {
+            if !notes.trim().is_empty() {
+                add_text("Notes:".to_string(), 10.5, 15.0, 38.0, BuiltinFont::Helvetica_Bold)?;
+                let mut notes_y = 32.0;
+                for line in notes.lines().take(4) {
+                    add_text(line.to_string(), 10.0, 15.0, notes_y, BuiltinFont::Helvetica)?;
+                    notes_y -= 5.0;
+                }
+            }
+        }
+
+        if let Some(payment_link) = &invoice.payment_link {
+            if !payment_link.trim().is_empty() {
+                add_text(
+                    format!("Pay online: {}", payment_link),
+                    9.0,
+                    15.0,
+                    12.0,
+                    BuiltinFont::Helvetica,
+                )?;
+            }
+        }
+
+        Ok(())
+    })
+    .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?;
+    doc.finish()
+        .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?;
+
+    let bytes = std::fs::read(&temp_path)
+        .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?;
+    let _ = std::fs::remove_file(&temp_path);
     Ok(bytes)
 }
 
