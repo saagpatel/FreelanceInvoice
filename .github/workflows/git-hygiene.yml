@@ -7,6 +7,7 @@ on:
 
 jobs:
   commitlint:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,7 +36,8 @@ jobs:
           script: |
             const branch = context.payload.pull_request?.head?.ref || "";
             const pattern = /^codex\/(feat|fix|chore|refactor|docs|test|perf|ci|spike|hotfix)\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
-            if (!pattern.test(branch)) {
+            const automationPattern = /^dependabot\/.+$/;
+            if (!pattern.test(branch) && !automationPattern.test(branch)) {
               core.setFailed(`Invalid branch name: ${branch}`);
             }
 
