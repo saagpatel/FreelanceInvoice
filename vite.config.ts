@@ -14,10 +14,12 @@ export default defineConfig(async () => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router-dom", "zustand"],
-          "vendor-charts": ["recharts"],
-          "vendor-tauri": ["@tauri-apps/api/core"],
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return;
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom|zustand)[\\/]/.test(id))
+            return "vendor-react";
+          if (id.includes("recharts")) return "vendor-charts";
+          if (id.includes("@tauri-apps/api")) return "vendor-tauri";
         },
       },
     },
