@@ -12,14 +12,31 @@ export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
   cacheDir,
   build: {
-    rollupOptions: {
+    manifest: true,
+    rolldownOptions: {
       output: {
-        manualChunks(id: string) {
-          if (!id.includes("node_modules")) return;
-          if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom|zustand)[\\/]/.test(id))
-            return "vendor-react";
-          if (id.includes("recharts")) return "vendor-charts";
-          if (id.includes("@tauri-apps/api")) return "vendor-tauri";
+        codeSplitting: {
+          // Avoid pulling the chart library into React's static startup graph.
+          // Priorities keep shared React dependencies in the core group.
+          includeDependenciesRecursively: false,
+          groups: [
+            {
+              name: "vendor-react",
+              test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|zustand|scheduler)[\\/]/,
+              priority: 100,
+            },
+            {
+              name: "vendor-charts",
+              test: /[\\/]node_modules[\\/]recharts[\\/]/,
+              includeDependenciesRecursively: true,
+              priority: 10,
+            },
+            {
+              name: "vendor-tauri",
+              test: /[\\/]node_modules[\\/]@tauri-apps[\\/]api[\\/]/,
+              priority: 50,
+            },
+          ],
         },
       },
     },

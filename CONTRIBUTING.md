@@ -28,7 +28,9 @@ Start with the checks affected by the change:
 | Types                            | `pnpm typecheck`                                                                | TypeScript without emitting output                                                     |
 | Existing formatting scope        | `pnpm lint`                                                                     | Prettier checks the paths listed in `package.json`; this is not a source-code linter   |
 | Documentation formatting         | `pnpm exec prettier --check README.md CONTRIBUTING.md docs/operator-runbook.md` | Includes CONTRIBUTING, which the existing lint script does not cover                   |
-| Frontend build and budget        | `pnpm build`                                                                    | TypeScript, Vite assets, then `size:check`                                             |
+| Frontend build and budget        | `pnpm build`                                                                    | TypeScript, Vite assets, budget regression fixtures, then `size:check`                 |
+
+Bundle budgets measure raw emitted JavaScript, not gzip size. The startup limit is 290 KiB: the original 230 KiB entry plus 60 KiB React allowance, now counted across every static import and HTML module preload in Vite's generated manifest. This includes React DOM, router, scheduler and shared code wherever the bundler places them. The Vite 8 migration changed that placement, so the former React-only file limit no longer described the same code. The entry still has its 230 KiB cap; charts total 390 KiB, individual route/shared chunks 20 KiB, and all emitted JavaScript 730 KiB. Charts must stay deferred outside dashboard use. `pnpm test:bundle` exercises missing graph/output and oversized startup/total failures; `pnpm build` runs these fixtures and the real output check.
 
 For a broader pre-release pass, use the repository authority:
 

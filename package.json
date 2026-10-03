@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:lean": "node scripts/lean-run.mjs dev",
-    "build": "tsc && vite build && pnpm size:check",
+    "build": "tsc && vite build && pnpm test:bundle && pnpm size:check",
     "build:raw": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "prettier --check README.md package.json .github/workflows/*.yml docs/**/*.md scripts/**/*.mjs lighthouserc.json .lighthouserc.production.json",
@@ -41,7 +41,8 @@
     "perf:assets": "bash scripts/perf/check-assets.sh",
     "perf:memory": "node --expose-gc scripts/perf/memory-smoke.mjs",
     "perf:summary": "node scripts/perf/summarize.mjs",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "test:bundle": "node --test scripts/tests/check-bundle-size.test.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
