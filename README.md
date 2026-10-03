@@ -11,9 +11,9 @@ FreelanceInvoice is a Tauri desktop app that handles the full client billing wor
 - **Timer-Based Time Tracking** — Start/stop timers per project; create manual time entries when you worked without the app open
 - **Invoice Builder** — Assemble invoices from time entries, preview with sandboxed HTML renderer, and export to PDF
 - **Client & Project Management** — Full CRUD for clients and projects with project-level rate configuration
-- **Revenue Dashboard** — Charts for billed hours, revenue by client, and invoice status at a glance via Recharts
+- **Revenue Dashboard** — Monthly revenue and revenue-by-client charts via Recharts, plus tracked-hours and outstanding-balance summaries
 - **AI Project Estimation** — Feed a project brief to Claude and get a structured estimate (requires your own Claude API key)
-- **Stripe Payment Links** — Generate Stripe payment links directly from invoices (premium tier)
+- **Stripe Checkout Links** — Generate Stripe Checkout payment URLs directly from invoices (premium tier)
 
 ## Quick Start
 
@@ -32,7 +32,7 @@ cd FreelanceInvoice
 pnpm install --frozen-lockfile
 ```
 
-Run all commands from the repository root. `.env` is optional for the host/cache overrides in `.env.example`; local unit tests do not need Claude or Stripe credentials. Installation runs the `prepare` script to install Husky hooks in this checkout.
+Run all commands from the repository root. The host/cache overrides listed in `.env.example` are read from the shell environment; local unit tests do not need Claude or Stripe credentials. Installation runs the `prepare` script to install Husky hooks in this checkout.
 
 ### Run (development)
 
@@ -66,7 +66,7 @@ Desktop packaging needs the platform prerequisites above; signed distribution ha
 
 ## Architecture
 
-FreelanceInvoice is a Tauri 2 monorepo with a Rust backend owning all persistent state (SQLite), business logic, and PDF generation. The React frontend communicates via Tauri's typed command interface. Invoice preview uses a sandboxed WebView to render HTML templates safely before PDF export. AI estimation and Stripe integration are optional capabilities gated behind environment variables.
+FreelanceInvoice is a Tauri 2 monorepo with a Rust backend managing billing data in SQLite, backend business logic, and PDF generation. API keys are stored in the OS credential store, and the frontend caches timer state in local storage. The React frontend communicates via Tauri's typed command interface. Saved-invoice preview renders HTML templates in a sandboxed iframe; PDF export generates a separate PDF using pdf_canvas. AI estimation requires a Claude API key configured in Settings; Stripe integration requires the premium tier, a Stripe API key, and HTTPS success/cancel URLs configured in Settings.
 
 ## License
 
