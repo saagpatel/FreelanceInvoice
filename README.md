@@ -19,42 +19,50 @@ FreelanceInvoice is a Tauri desktop app that handles the full client billing wor
 
 ### Prerequisites
 
-- Node.js 20+
-- pnpm 9+
-- Rust toolchain (stable) + Tauri v2 prerequisites for macOS
+- Node.js 22.22.1+ on the 22.x line, or 24+ (the current lockfile includes Vite 8, jsdom 29, and lint-staged 17)
+- pnpm 10.28.1, matching the performance CI workflows
+- For Rust tests and desktop commands: stable Rust plus the [Tauri v2 platform prerequisites](https://v2.tauri.app/start/prerequisites/); on macOS, install Xcode Command Line Tools
+- For the Git verification guards: `gitleaks` on `PATH`
 
 ### Installation
 
 ```bash
 git clone https://github.com/saagpatel/FreelanceInvoice.git
 cd FreelanceInvoice
-pnpm install
-cp .env.example .env
+pnpm install --frozen-lockfile
 ```
+
+Run all commands from the repository root. `.env` is optional for the host/cache overrides in `.env.example`; local unit tests do not need Claude or Stripe credentials. Installation runs the `prepare` script to install Husky hooks in this checkout.
 
 ### Run (development)
 
 ```bash
-pnpm dev
+pnpm dev        # Vite frontend only
+pnpm tauri dev  # Native desktop app and frontend
 ```
 
-### Build (desktop app)
+The native app opens its local billing database. Use disposable test data or a separate OS test account for scenarios that write records or settings.
+
+### Build
 
 ```bash
-pnpm build
+pnpm build        # TypeScript, frontend assets, and the strict bundle-size gate
+pnpm tauri build  # Native desktop package; also runs pnpm build first
 ```
+
+Desktop packaging needs the platform prerequisites above; signed distribution has additional release requirements. For focused tests, broader verification, and UI smoke checks, see [Contributing](CONTRIBUTING.md#verification).
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Desktop shell | Tauri 2 + Rust |
-| Frontend | React + TypeScript + Vite |
-| State | Zustand |
-| Charts | Recharts |
-| Styling | Tailwind CSS |
-| AI estimation | Anthropic Claude API |
-| Payments | Stripe |
+| Layer         | Technology                |
+| ------------- | ------------------------- |
+| Desktop shell | Tauri 2 + Rust            |
+| Frontend      | React + TypeScript + Vite |
+| State         | Zustand                   |
+| Charts        | Recharts                  |
+| Styling       | Tailwind CSS              |
+| AI estimation | Anthropic Claude API      |
+| Payments      | Stripe                    |
 
 ## Architecture
 

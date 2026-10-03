@@ -4,7 +4,7 @@ This runbook covers day-to-day operation, verification, and local recovery for F
 
 ## Pre-Release Checks
 
-Run from repo root:
+Use the [Quick Start prerequisites](../README.md#prerequisites) and [verification guide](../CONTRIBUTING.md#verification) first, including frozen-lockfile installation, a feature branch, and `gitleaks` for local guards. Run from the repo root:
 
 ```bash
 bash .codex/scripts/run_verify_commands.sh
@@ -15,6 +15,8 @@ Expected result:
 
 - all verify commands pass
 - desktop debug build succeeds
+
+The debug command compiles without installer bundles; it does not establish signing, notarization, or release readiness. The local verification bundle does not run the optional Lighthouse upload or external API/DB CI lanes. Use the guide above for focused fixture checks and browser checks when UI behavior changes.
 
 ## Local Data Location
 
