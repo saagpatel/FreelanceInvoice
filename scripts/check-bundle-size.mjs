@@ -87,9 +87,9 @@ export function checkBundleSize(distDir = path.resolve("dist")) {
     Object.keys(manifest).filter((key) => manifest[key].isEntry === true),
   );
   if (!roots.size) throw new Error("No entry in build manifest");
-  const html = fs
-    .readFileSync(path.join(root, "index.html"), "utf8")
-    .replace(/<!--[\s\S]*?-->/g, "");
+  // Inspect emitted HTML without sanitizing it. Count module tags in comments
+  // conservatively too, rather than accidentally hiding a preload.
+  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   let moduleScripts = 0;
   for (const [tag] of html.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
     const attrs = attributes(tag);

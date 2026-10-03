@@ -99,6 +99,15 @@ test("rejects eager chart imports and chart HTML preloads", (t) => {
   );
 });
 
+test("does not hide module preloads by rewriting HTML comments", (t) => {
+  const dir = fixture(t);
+  fs.appendFileSync(
+    path.join(dir, "index.html"),
+    '<!-- <link rel="modulepreload" href="/assets/vendor-charts-library.js"> -->',
+  );
+  assert.throws(() => checkBundleSize(dir), /Bootstrap JS/);
+});
+
 test("fails closed for missing manifest, dependency edges and output files", (t) => {
   const missingManifest = fixture(t);
   fs.unlinkSync(path.join(missingManifest, ".vite", "manifest.json"));
